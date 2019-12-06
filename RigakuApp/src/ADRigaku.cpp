@@ -47,9 +47,19 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 			break;
 			
 		case UHSS::ConfigurationChanged:
+		{
 			printf("Config Change\n");
-			break;
 			
+			UHSS::Configuration config = api.getConfiguration();
+			
+			this->setDoubleParam(RigakuUpperThreshold, config.upperThreshold);
+			this->setDoubleParam(RigakuLowerThreshold, config.lowerThreshold);
+			this->setDoubleParam(RigakuReferenceThreshold, config.refThreshold);
+			
+			this->callParamCallbacks();
+			
+			break;
+		}
 		case UHSS::FrameAvailable:
 		{
 			size_t image_dims[2];
@@ -154,7 +164,7 @@ ADRigaku::ADRigaku(const char *portName, int maxBuffers, size_t maxMemory, int p
 	this->connect(pasynUserSelf);
 	
 	api.setCallback(*this);
-	api.initialize(false);
+	api.initialize(true);
 	
 	epicsAtExit(RigakuExit, this);
 }
