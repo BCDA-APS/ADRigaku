@@ -1,0 +1,191 @@
+eval 'exec perl -S -w  $0 ${1+"$@"}'  # -*- Mode: perl -*-
+        if 0; 
+
+#############################################################
+#
+#	Starts a soft IOC 
+#	If that process goes away optionally restarts the soft IOC
+#   Checks if the IOC is already running by looking for a PV
+#     identified with that IOC. Won't start another copy if 
+#     it's already running.
+#   Sets a bunch of environment variables that are useful for
+#     logging info about the IOC
+#
+# siocAsdLaunch,v 1.13 2004/07/23 19:29:45 norume Exp
+#
+#############################################################
+
+use strict;
+use Getopt::Std;
+use File::Basename;
+use File::Spec;
+use File::stat;
+use Cwd 'abs_path';
+
+# Set the partial name of a standard PV that should appear in each IOC here
+# Full PV name will be $ioc$pv
+my $pv = ":heartbeat";
+
+# Path to ASD std stuff
+$ENV{"IOC_ASDSTD"} = "/APSshare/epics/synApps_6_0/support/asdStd-3-18-asd1";
+
+# Use caget from EPICS_BASE
+my $caget = "/APSshare/epics/base-3.15.6"."/bin/",$ENV{"EPICS_HOST_ARCH"}."/caget";
+# Use extensions caget no EPICS base caget
+$caget = "caget" if ! -f $caget;
+
+# Describe script usage
+my $usage = "\nUsage:\n"
+    . "siocAsdLaunch [-r | -c count] iocName path/to/iocExecutable st.cmd path/to/startup\n"
+    . "\nStarts a soft IOC. The IOC won't be started if the IOC already exists.\n"
+    . "Options:\n"
+    . "    -r      automatically restart IOC when it dies.\n"
+    . "    -c cnt  automatically restart IOC \"cnt\" times when it dies.\n"
+    . "\n"
+    . "Sets the following environment variables\n"
+    . "    IOC_LAUNCH_SCRIPT  = absolute path of ASD start script (our invoker)\n"
+    . "    IOC_EXECUTABLE     = absolute path of iocExecutable file\n"
+    . "    IOC_STARTUP_SCRIPT = absolute path of st.cmd file\n"
+    . "    IOC_LAUNCH_PID     = Launcher pid (for disabling auto-restart)\n"
+    . "    IOC_NAME           = IOC name\n"
+    . "    IOCSH_PS1          = ioc shell prompt, set to \"iocname> \"\n"
+    . "    IOC_ASDSTD         = absolute path of ASD std"
+    . "    IOC_INFO           = absolute path of iocinfo"
+    . "\n";
+
+our($opt_r, $opt_c, $opt_d, $opt_i);
+my $command;
+my $ioc;
+my $child_pid;
+my $restarts = 0;
+my $st_cmd;
+
+#
+#### subroutines
+#
+
+# Print error message, wait for confirmation, then terminate.  The wait
+# for confirmation is necessary since this script is running inside a
+# GNU screen session.  If the script terminated immediately after printing
+# the message, the screen session would terminate and the error message
+# would disappear!.
+sub myDie {
+    print $_[0];
+    print "\nPress <Enter> key to continue: ";
+    readline($STDIN);
+    print "\n";
+    exit 1;
+}
+
+# Check if this IOC already exists by looking for a standard PV
+sub iocExists {
+    my $channel;
+    my $output;
+    
+    print "Check if IOC $ioc is already running....\n";
+    $output = `$caget $ioc$pv`;
+    # Invalid from extensions caget, empty file from base caget 
+    if ( $output !~ m/Invalid/ && $output ne "") {
+        myDie "\nIOC $ioc not started: An IOC with the same PV is already running.\n";
+    }
+    print "\nWill attempt to start IOC.\n";
+} 
+
+#
+#### Main program
+#
+
+$| = 1;     # Flush output at each print statement, don't wait for \n
+
+getopts('rc:di:') or myDie "$usage";
+myDie "$usage" unless defined $ARGV[0];
+
+#
+# Are we where we're supposed to be?
+#
+my $host = "$ARGV[4]";
+if($host) {
+    my $thisHost;
+    eval 'use Sys::Hostname';
+    if ($@) {
+        $thisHost = `hostname`;
+    }
+    else {
+        $thisHost = hostname();
+    }
+    if ($host ne $thisHost) {
+        print "WARNING -- EXPECTING TO RUN ON $host BUT ACTUALLY STARTING ON $thisHost.\n";
+    }
+}
+
+# Check that effective user i.d. is correct
+if($ENV{"IOC_INFO"}) {
+    print "Warning, using non-standard location for IOC information!\n";
+}
+else {
+    (getpwuid($>) eq "sioc") or myDie "Soft IOC applications may be started only by the 'sioc' user.";
+	$ENV{"IOC_INFO"} = "/usr/local/iocapps/iocinfo";
+}
+
+#
+# Ensure that IOC name is reasonable
+#
+$ioc = "$ARGV[0]";
+myDie "IOC name does not begin with 'sioc'" if ($ioc !~ /^sioc/);
+myDie "IOC name is too short" if($ioc eq "sioc");
+myDie "IOC name is too long" if(length($ioc) > 13);
+myDie "IOC name contains invalid character(s)" if($ioc !~ /^sioc[\w:-]+$/);
+$ENV{"IOC_NAME"}           = "$ioc";
+$ENV{"IOCSH_PS1"}          = "$ioc> ";
+
+# Get the absolute directory name for the executable.
+-x  $ARGV[1] or myDie "$ARGV[1] is not an executable file";
+my $executable = abs_path(dirname($ARGV[1]))."/".basename($ARGV[1]);
+$ENV{"IOC_EXECUTABLE"} = $executable;
+printf("Executing %s \n", $executable);
+my $sb = stat($executable);
+printf("built on %s \n", scalar localtime $sb->mtime);
+
+# Get the absolute directory name for the startup script.
+-r $ARGV[2] or myDie "$ARGV[2] is not a readable file";
+#$ENV{"IOC_STARTUP_SCRIPT"} = abs_path(dirname($ARGV[2]))."/".basename($ARGV[2]);
+
+# For soft ioc must change file names like /cygdrive/g/... to g:/...
+my $start = abs_path(dirname($ARGV[2]))."/".basename($ARGV[2]);
+if ( $start =~ m/\/cygdrive/) {
+  $start =~ s/\/cygdrive\///;
+  $start =~ s/\//:\//;
+}
+$ENV{"IOC_STARTUP_SCRIPT"} = $start;
+
+# Set launch script environment variable.
+-e  $ARGV[3] or myDie "$ARGV[3] is not a file" ;
+$ENV{"IOC_LAUNCH_SCRIPT"} = abs_path(dirname($ARGV[3]))."/".basename($ARGV[3]);
+
+$command = $ENV{"IOC_EXECUTABLE"} . " " . $ENV{"IOC_STARTUP_SCRIPT"};
+
+#
+# Check arguments
+#
+myDie "Can't have -r and -c togther." . "$usage" if($opt_r and $opt_c);
+
+#
+# Start the application
+#
+$ENV{"IOC_LAUNCH_PID"} = $$;
+while() {
+    iocExists();
+    if($opt_r or ($opt_c and $opt_c > 0)) {
+        printf("IOC will automatically restart.  To prevent this, \"kill %s\"\n", $ENV{"IOC_LAUNCH_PID"});
+    }
+    system $ENV{"IOC_EXECUTABLE"}, $ENV{"IOC_STARTUP_SCRIPT"};
+    $restarts++;
+    if($opt_c) {
+        if ($restarts > $opt_c) {
+            myDie "\nMaximum restart count reached.  Will not restart IOC $ioc again.";
+        }
+    }
+    elsif(!$opt_r) {
+        myDie "\nIOC $ioc terminated.";
+    }
+}

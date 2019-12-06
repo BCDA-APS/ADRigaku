@@ -1,0 +1,73 @@
+include "ADBase.template"
+
+record(bo, "$(P)$(R)ZeroDead")
+{
+	field(PINI, "YES")
+	field(DTYP, "asynInt32")
+	field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_ZERO_DEAD")
+	field(ZNAM, "True")
+	field(ONAM, "False")
+	field(VAL,  "0")
+}
+
+record(bi, "$(P)$(R)ZeroDead_RBV")
+{
+	field(DTYP, "asynInt32")
+	field(INP,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_ZERO_DEAD")
+	field(ZNAM, "True")
+	field(ONAM, "False")
+	field(SCAN, "I/O Intr")
+}
+
+record(mbbo, "$(P)$(R)ReadMode")
+{
+	field(PINI, "YES")
+	field(DTYP, "asynInt32")
+	field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_READ_MODE")
+	field(ZRST, "32 bit")
+	field(ZRVL, "0")
+	field(ONST, "16 bit x 2")
+	field(ONVL, "1")
+	field(TWST, "8 bit")
+	field(TWVL, "2")
+	field(THST, "4 bit")
+	field(THVL, "3")
+	field(FRST, "2 bit")
+	field(FRVL, "4")
+	field(VAL, "0")
+}
+
+record(mbbi, "$(P)$(R)ReadMode_RBV")
+{
+	field(DTYP, "asynInt32")
+	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_READ_MODE")
+	field(ZRST, "32 bit")
+	field(ZRVL, "0")
+	field(ONST, "16 bit x 2")
+	field(ONVL, "1")
+	field(TWST, "8 bit")
+	field(TWVL, "2")
+	field(THST, "4 bit")
+	field(THVL, "3")
+	field(FRST, "2 bit")
+	field(FRVL, "4")
+	field(SCAN, "I/O Intr")
+}
+
+record(ao, "$(P)$(R)UpperThreshold")
+{
+	field(DTYP, "asynFloat64")
+	field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_UPPER_THRESHOLD")
+}
+
+record(ao, "$(P)$(R)LowerThreshold")
+{
+	field(DTYP, "asynFloat64")
+	field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_LOWER_THRESHOLD")
+}
+
+record(ao, "$(P)$(R)ReferenceThreshold")
+{
+	field(DTYP, "asynFloat64")
+	field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_REF_THRESHOLD")
+}
