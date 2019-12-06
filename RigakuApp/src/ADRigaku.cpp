@@ -34,7 +34,7 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 		{
 			printf("State Change\n");
 			
-			if (state.acquisitionState != UHSS::Status::IN_PROGRESS)
+			if (state.serverState == UHSS::Status::IDLE)
 			{
 				this->setIntegerParam(ADStatus, ADStatusIdle);
 				callParamCallbacks();
@@ -56,6 +56,12 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 
 			image_dims[0] = state.outputDataset.numColumns;
 			image_dims[1] = state.outputDataset.numRows;
+			
+			if (state.outputDataset.imagingMode == UHSS::ImagingMode::B16_2S || 
+			    state.outputDataset.imagingMode == UHSS::ImagingMode::B8_2S)
+			{
+				image_dims[1] = image_dims[1] * 2;
+			}
 			
 			char* buffer = (char*) malloc(state.outputDataset.frameSize);
 			api.getImages(buffer, 0, 1);
@@ -137,6 +143,14 @@ ADRigaku::ADRigaku(const char *portName, int maxBuffers, size_t maxMemory, int p
 	ADDriver::createParam(RigakuLowerThresholdString, asynParamFloat64, &RigakuLowerThreshold);
 	ADDriver::createParam(RigakuReferenceThresholdString, asynParamFloat64, &RigakuReferenceThreshold);
 	
+	ADDriver::createParam(RigakuBadPixelString, asynParamInt32, &RigakuBadPixel);
+	ADDriver::createParam(RigakuCountingRateString, asynParamInt32, &RigakuCountingRate);
+	ADDriver::createParam(RigakuInterChipString, asynParamInt32, &RigakuInterChip);
+	ADDriver::createParam(RigakuFlatFieldString, asynParamInt32, &RigakuFlatField);
+	ADDriver::createParam(RigakuRedistributionString, asynParamInt32, &RigakuRedistribution);
+	ADDriver::createParam(RigakuOuterEdgeString, asynParamInt32, &RigakuOuterEdge);
+	ADDriver::createParam(RigakuPileupString, asynParamInt32, &RigakuPileup);
+	
 	this->connect(pasynUserSelf);
 	
 	api.setCallback(*this);
@@ -173,6 +187,22 @@ asynStatus ADRigaku::writeInt32(asynUser *pasynUser, epicsInt32 value)
 			this->stopAcquisition();
 		}
 	}
+	else if (function == RigakuBadPixel || function == RigakuCountingRate || function == RigakuInterChip ||
+	         function == RigakuFlatField || function == RigakuRedistribution || function == RigakuOuterEdge ||
+	         function == RigakuPileup)
+	{
+		int values[9];
+		
+		this->getIntegerParam(RigakuBadPixel, &values[0]);
+		this->getIntegerParam(RigakuCountingRate, &values[1]);
+		this->getIntegerParam(RigakuInterChip, &values[2]);
+		this->getIntegerParam(RigakuFlatField, &values[3]);
+		this->getIntegerParam(RigakuRedistribution, &values[4]);
+		this->getIntegerParam(RigakuOuterEdge, &values[5]);
+		this->getIntegerParam(RigakuPileup, &values[6]);
+		
+		api.controlCorrections(NULL, 0, values);
+	}
 	else
 	{
 		status = ADDriver::writeInt32(pasynUser, value);
@@ -189,22 +219,18 @@ asynStatus ADRigaku::writeFloat64(asynUser *pasynUser, epicsFloat64 value)
 	
 	this->setDoubleParam(function, value);
 	
+	UHSS::Configuration config = api.getConfiguration();
+	
 	if (function == RigakuLowerThreshold)
-	{ 
-		UHSS::Configuration config = api.getConfiguration();
-		
+	{
 		api.setThreshold(value, config.upperThreshold, config.refThreshold);
 	}
 	else if (function == RigakuUpperThreshold)
-	{ 
-		UHSS::Configuration config = api.getConfiguration();
-		
+	{
 		api.setThreshold(config.lowerThreshold, value, config.refThreshold);
 	}
 	else if (function == RigakuReferenceThreshold)
-	{ 
-		UHSS::Configuration config = api.getConfiguration();
-		
+	{
 		api.setThreshold(config.lowerThreshold, config.upperThreshold, value);
 	}
 	else
@@ -216,6 +242,33 @@ asynStatus ADRigaku::writeFloat64(asynUser *pasynUser, epicsFloat64 value)
 	return (asynStatus) status;
 }
 
+asynStatus ADRigaku::readFloat64(asynUser *pasynUser, epicsFloat64 *value)
+{
+	int status = asynSuccess;
+	int function = pasynUser->reason;
+	
+	UHSS::Configuration config = api.getConfiguration();
+	
+	if (function == RigakuLowerThreshold)
+	{
+		*value = config.lowerThreshold;
+	}
+	else if (function == RigakuUpperThreshold)
+	{
+		*value = config.upperThreshold;
+	}
+	else if (function == RigakuReferenceThreshold)
+	{
+		*value = config.refThreshold;
+	}
+	else
+	{
+		status = ADDriver::readFloat64(pasynUser, value);
+	}
+	
+	callParamCallbacks();
+	return (asynStatus) status;
+}
 
 void ADRigaku::startAcquisition()
 {

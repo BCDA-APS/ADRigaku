@@ -10,6 +10,13 @@
 #define RigakuUpperThresholdString "RIGAKU_UPPER_THRESHOLD"
 #define RigakuLowerThresholdString "RIGAKU_LOWER_THRESHOLD"
 #define RigakuReferenceThresholdString "RIGAKU_REF_THRESHOLD"
+#define RigakuBadPixelString "RIGAKU_PIXEL_CORRECTION"
+#define RigakuCountingRateString "RIGAKU_COUNTING_RATE"
+#define RigakuInterChipString "RIGAKU_INTER_CHIP"
+#define RigakuFlatFieldString "RIGAKU_FLAT_FIELD"
+#define RigakuRedistributionString "RIGAKU_REDISTRIBUTION"
+#define RigakuOuterEdgeString "RIGAKU_OUTER_EDGE"
+#define RigakuPileupString "RIGAKU_PILEUP"
 
 typedef enum
 {
@@ -30,6 +37,8 @@ public:
 	asynStatus writeInt32(asynUser *pasynUser, epicsInt32 value);
 	asynStatus writeFloat64(asynUser *pasynUser, epicsFloat64 value);
 	
+	asynStatus readFloat64(asynUser *pasynUser, epicsFloat64 *value);
+	
 	void startAcquisition();
 	void stopAcquisition();
 	void processImage();
@@ -41,10 +50,18 @@ protected:
 	int RigakuLowerThreshold;
 	int RigakuReferenceThreshold;
 	
+	int RigakuBadPixel;
+	int RigakuCountingRate;
+	int RigakuInterChip;
+	int RigakuFlatField;
+	int RigakuRedistribution;
+	int RigakuOuterEdge;
+	int RigakuPileup;
+	
 private:
 	UHSS::AcqManager& api;
 };
 
-#define NUM_RIGAKU_PARAMS 5
+#define NUM_RIGAKU_PARAMS 12
 
 #endif
