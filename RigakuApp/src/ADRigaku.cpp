@@ -37,6 +37,7 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 			if (state.serverState == UHSS::Status::IDLE)
 			{
 				this->setIntegerParam(ADStatus, ADStatusIdle);
+				this->setIntegerParam(ADAcquire, 0);
 				callParamCallbacks();
 			}
 			
