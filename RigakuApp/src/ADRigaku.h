@@ -7,9 +7,10 @@
 
 #define RigakuZeroDeadString "RIGAKU_ZERO_DEAD"
 #define RigakuReadModeString "RIGAKU_READ_MODE"
+
 #define RigakuUpperThresholdString "RIGAKU_UPPER_THRESHOLD"
 #define RigakuLowerThresholdString "RIGAKU_LOWER_THRESHOLD"
-#define RigakuReferenceThresholdString "RIGAKU_REF_THRESHOLD"
+
 #define RigakuBadPixelString "RIGAKU_PIXEL_CORRECTION"
 #define RigakuCountingRateString "RIGAKU_COUNTING_RATE"
 #define RigakuInterChipString "RIGAKU_INTER_CHIP"
@@ -17,6 +18,11 @@
 #define RigakuRedistributionString "RIGAKU_REDISTRIBUTION"
 #define RigakuOuterEdgeString "RIGAKU_OUTER_EDGE"
 #define RigakuPileupString "RIGAKU_PILEUP"
+
+#define RigakuExposureDelayString "RIGAKU_EXPOSURE_DELAY"
+#define RigakuExposureIntervalString "RIGAKU_EXPOSURE_INTERVAL"
+
+#define RigakuCalibrationLabelString "RIGAKU_CALIBRATION_LABEL"
 
 typedef enum
 {
@@ -34,10 +40,12 @@ public:
     ~ADRigaku();
 	void notify(UHSS::AcqManager& manager, UHSS::StatusEvent status);
 	
-	asynStatus writeInt32(asynUser *pasynUser, epicsInt32 value);
-	asynStatus writeFloat64(asynUser *pasynUser, epicsFloat64 value);
+	asynStatus writeInt32(asynUser* pasynUser, epicsInt32 value);
 	
-	asynStatus readFloat64(asynUser *pasynUser, epicsFloat64 *value);
+	asynStatus writeFloat64(asynUser* pasynUser, epicsFloat64 value);
+	asynStatus readFloat64(asynUser* pasynUser, epicsFloat64 *value);
+	
+	asynStatus writeOctet(asynUser* pasynUser, const char* value, size_t nChars, size_t* actual);
 	
 	void startAcquisition();
 	void stopAcquisition();
@@ -48,7 +56,6 @@ protected:
 	int RigakuReadMode;
 	int RigakuUpperThreshold;
 	int RigakuLowerThreshold;
-	int RigakuReferenceThreshold;
 	
 	int RigakuBadPixel;
 	int RigakuCountingRate;
@@ -58,10 +65,15 @@ protected:
 	int RigakuOuterEdge;
 	int RigakuPileup;
 	
+	int RigakuExposureDelay;
+	int RigakuExposureInterval;
+	
+	int RigakuCalibrationLabel;
+	
 private:
 	UHSS::AcqManager& api;
 };
 
-#define NUM_RIGAKU_PARAMS 12
+#define NUM_RIGAKU_PARAMS 14
 
 #endif

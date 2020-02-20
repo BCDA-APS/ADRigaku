@@ -34,9 +34,12 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 		{
 			printf("State Change\n");
 			
-			if (state.serverState == UHSS::Status::IDLE)
+			if (state.acquisitionState == UHSS::Status::NORMAL_END ||
+			    state.acquisitionState == UHSS::Status::TERMINATED ||
+				state.acquisitionState == UHSS::Status::NOIMAGE)
 			{
 				this->setIntegerParam(ADStatus, ADStatusIdle);
+				this->setIntegerParam(ADAcquireBusy, 0);
 				this->setIntegerParam(ADAcquire, 0);
 				callParamCallbacks();
 			}
@@ -53,9 +56,8 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 			
 			UHSS::Configuration config = api.getConfiguration();
 			
-			this->setDoubleParam(RigakuUpperThreshold, config.upperThreshold);
-			this->setDoubleParam(RigakuLowerThreshold, config.lowerThreshold);
-			this->setDoubleParam(RigakuReferenceThreshold, config.refThreshold);
+			this->setDoubleParam(RigakuUpperThreshold, config.upperEnergy);
+			this->setDoubleParam(RigakuLowerThreshold, config.lowerEnergy);
 			
 			this->callParamCallbacks();
 			
@@ -97,6 +99,9 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 			}
 			
 			memcpy(this->pArrays[0]->pData, buffer, state.outputDataset.frameSize);
+			
+			delete buffer;
+			
 			this->processImage();
 			
 			break;
@@ -152,7 +157,6 @@ ADRigaku::ADRigaku(const char *portName, int maxBuffers, size_t maxMemory, int p
 	ADDriver::createParam(RigakuReadModeString, asynParamInt32, &RigakuReadMode);
 	ADDriver::createParam(RigakuUpperThresholdString, asynParamFloat64, &RigakuUpperThreshold);
 	ADDriver::createParam(RigakuLowerThresholdString, asynParamFloat64, &RigakuLowerThreshold);
-	ADDriver::createParam(RigakuReferenceThresholdString, asynParamFloat64, &RigakuReferenceThreshold);
 	
 	ADDriver::createParam(RigakuBadPixelString, asynParamInt32, &RigakuBadPixel);
 	ADDriver::createParam(RigakuCountingRateString, asynParamInt32, &RigakuCountingRate);
@@ -161,6 +165,11 @@ ADRigaku::ADRigaku(const char *portName, int maxBuffers, size_t maxMemory, int p
 	ADDriver::createParam(RigakuRedistributionString, asynParamInt32, &RigakuRedistribution);
 	ADDriver::createParam(RigakuOuterEdgeString, asynParamInt32, &RigakuOuterEdge);
 	ADDriver::createParam(RigakuPileupString, asynParamInt32, &RigakuPileup);
+	
+	ADDriver::createParam(RigakuExposureDelayString, asynParamFloat64, &RigakuExposureDelay);
+	ADDriver::createParam(RigakuExposureIntervalString, asynParamFloat64, &RigakuExposureInterval);
+	
+	ADDriver::createParam(RigakuCalibrationLabelString, asynParamOctet, &RigakuCalibrationLabel);
 	
 	this->connect(pasynUserSelf);
 	
@@ -231,18 +240,18 @@ asynStatus ADRigaku::writeFloat64(asynUser *pasynUser, epicsFloat64 value)
 	this->setDoubleParam(function, value);
 	
 	UHSS::Configuration config = api.getConfiguration();
+
+	std::string calib;
+	
+	this->getStringParam(RigakuCalibrationLabel, calib);
 	
 	if (function == RigakuLowerThreshold)
 	{
-		api.setThreshold(value, config.upperThreshold, config.refThreshold);
+		api.setEnergy(calib.c_str(), value, config.upperEnergy, 1);
 	}
 	else if (function == RigakuUpperThreshold)
 	{
-		api.setThreshold(config.lowerThreshold, value, config.refThreshold);
-	}
-	else if (function == RigakuReferenceThreshold)
-	{
-		api.setThreshold(config.lowerThreshold, config.upperThreshold, value);
+		api.setEnergy(calib.c_str(), config.lowerEnergy, value, 1);
 	}
 	else
 	{
@@ -260,21 +269,34 @@ asynStatus ADRigaku::readFloat64(asynUser *pasynUser, epicsFloat64 *value)
 	
 	UHSS::Configuration config = api.getConfiguration();
 	
-	if (function == RigakuLowerThreshold)
-	{
-		*value = config.lowerThreshold;
-	}
-	else if (function == RigakuUpperThreshold)
-	{
-		*value = config.upperThreshold;
-	}
-	else if (function == RigakuReferenceThreshold)
-	{
-		*value = config.refThreshold;
-	}
+	if      (function == RigakuLowerThreshold)    { *value = config.lowerEnergy; }
+	else if (function == RigakuUpperThreshold)    { *value = config.upperEnergy; }
 	else
 	{
 		status = ADDriver::readFloat64(pasynUser, value);
+	}
+	
+	callParamCallbacks();
+	return (asynStatus) status;
+}
+
+asynStatus ADRigaku::writeOctet(asynUser* pasynUser, const char* value, size_t nChars, size_t* actual)
+{
+	int function = pasynUser->reason;
+	int status = asynSuccess;
+	
+	this->setStringParam(function, value);
+	
+	UHSS::Configuration config = api.getConfiguration();
+	
+	if (function == RigakuCalibrationLabel)
+	{
+		api.setEnergy(value, config.lowerEnergy, config.upperEnergy, 1);
+		*actual = sizeof(value);
+	}
+	else
+	{
+		status = ADDriver::writeOctet(pasynUser, value, nChars, actual);
 	}
 	
 	callParamCallbacks();
@@ -467,15 +489,16 @@ void ADRigaku::startAcquisition()
 	params.readoutBits = 0;
 	params.noiseElimination = UHSS::NoiseElimination::LOW;
 	
-	double exposure, period;
+	double exposure, interval, delay;
 	
 	this->getDoubleParam(ADAcquireTime, &exposure);
-	this->getDoubleParam(ADAcquirePeriod, &period);
+	this->getDoubleParam(RigakuExposureInterval, &interval);
+	this->getDoubleParam(RigakuExposureDelay, &delay);
 	
 	params.exposureTime = exposure;
-	params.exposureInterval = period - exposure;
+	params.exposureInterval = interval;
+	params.exposureDelay = delay;
 	
-	params.exposureDelay = 0.0;
 	params.acquisitionDelay = 0.0;
 	
 	api.setParameters(params);

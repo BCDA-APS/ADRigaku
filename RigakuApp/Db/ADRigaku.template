@@ -237,16 +237,45 @@ record(ai, "$(P)$(R)LowerThreshold_RBV")
 	field(PINI, "YES")
 }
 
-record(ao, "$(P)$(R)ReferenceThreshold")
+record(ao, "$(P)$(R)ExposureDelay")
 {
 	field(DTYP, "asynFloat64")
-	field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_REF_THRESHOLD")
+	field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_EXPOSURE_DELAY")
 }
 
-record(ai, "$(P)$(R)ReferenceThreshold_RBV")
+record(ai, "$(P)$(R)ExposureDelay_RBV")
 {
 	field(DTYP, "asynFloat64")
-	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_REF_THRESHOLD")
+	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_EXPOSURE_DELAY")
 	field(SCAN, "I/O Intr")
 	field(PINI, "YES")
 }
+
+record(ao, "$(P)$(R)ExposureInterval")
+{
+	field(DTYP, "asynFloat64")
+	field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_EXPOSURE_INTERVAL")
+}
+
+record(ai, "$(P)$(R)ExposureInterval_RBV")
+{
+	field(DTYP, "asynFloat64")
+	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_EXPOSURE_INTERVAL")
+	field(SCAN, "I/O Intr")
+	field(PINI, "YES")
+}
+
+record(stringout, "$(P)$(R)CalibrationLabel")
+{
+	field(DTYP, "asynOctetWrite")
+	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_CALIBRATION_LABEL")
+}
+
+record(stringin, "$(P)$(R)CalibrationLabel_RBV")
+{
+	field(DTYP, "asynOctetRead")
+	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_CALIBRATION_LABEL")
+	field(PINI, "YES")
+	field(SCAN, "I/O Intr")
+}
+
