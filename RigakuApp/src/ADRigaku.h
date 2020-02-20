@@ -5,8 +5,7 @@
 #include "uhss.h"
 
 
-#define RigakuZeroDeadString "RIGAKU_ZERO_DEAD"
-#define RigakuReadModeString "RIGAKU_READ_MODE"
+#define RigakuImageModeString "RIGAKU_IMAGE_MODE"
 
 #define RigakuUpperThresholdString "RIGAKU_UPPER_THRESHOLD"
 #define RigakuLowerThresholdString "RIGAKU_LOWER_THRESHOLD"
@@ -24,15 +23,6 @@
 
 #define RigakuCalibrationLabelString "RIGAKU_CALIBRATION_LABEL"
 
-typedef enum
-{
-	B32_Single,
-	B16_2S,
-	B16_Zero_Deadtime,
-	B8_Zero_Deadtime,
-	B4_Zero_Deadtime,
-	B2_Zero_Deadtime
-} RigakuReadMode_t;
 
 class epicsShareClass ADRigaku: public ADDriver, public UHSS::ManagerCallback {
 public:
@@ -52,8 +42,6 @@ public:
 	void processImage();
 
 protected:
-	int RigakuZeroDead;
-	int RigakuReadMode;
 	int RigakuUpperThreshold;
 	int RigakuLowerThreshold;
 	

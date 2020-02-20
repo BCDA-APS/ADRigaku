@@ -153,8 +153,6 @@ ADRigaku::ADRigaku(const char *portName, int maxBuffers, size_t maxMemory, int p
 	         asynEnumMask, asynEnumMask, ASYN_CANBLOCK, 1, priority, stackSize),
 	api(UHSS::getAPI())
 {
-	ADDriver::createParam(RigakuZeroDeadString, asynParamInt32, &RigakuZeroDead);
-	ADDriver::createParam(RigakuReadModeString, asynParamInt32, &RigakuReadMode);
 	ADDriver::createParam(RigakuUpperThresholdString, asynParamFloat64, &RigakuUpperThreshold);
 	ADDriver::createParam(RigakuLowerThresholdString, asynParamFloat64, &RigakuLowerThreshold);
 	
@@ -309,145 +307,13 @@ void ADRigaku::startAcquisition()
 	
 	this->getIntegerParam(ADNumImages, &params.numFrames);
 	
-	int dead, trigger, mode;
+	int trigger, mode;
 	
-	this->getIntegerParam(RigakuZeroDead, &dead);
 	this->getIntegerParam(ADTriggerMode, &trigger);
 	this->getIntegerParam(ADImageMode, &mode);
 	
-	if (dead == 0 && trigger == ADTriggerInternal)
-	{
-		params.acquisitionMode = UHSS::AcquisitionMode::FIXED_TIME;
-	}
-	else if (dead == 0 && trigger == ADTriggerExternal)
-	{
-		if (mode == ADImageContinuous)
-		{
-			params.acquisitionMode = UHSS::AcquisitionMode::CONT_WITH_TRIGGER;
-		}
-		else if (mode == ADImageSingle)
-		{
-			params.acquisitionMode = UHSS::AcquisitionMode::START_WITH_TRIGGER;
-		}
-		else
-		{
-			params.acquisitionMode = UHSS::AcquisitionMode::START_WITH_TRIGGER_FIXED_TIME;
-		}
-	}
-	else if (dead == 1 && trigger == ADTriggerInternal)
-	{
-		params.acquisitionMode = UHSS::AcquisitionMode::FIXED_TIME_ZERO_DEAD;
-	}
-	else if (dead == 1 && trigger == ADTriggerExternal)
-	{
-		if (mode == ADImageContinuous)
-		{
-			params.acquisitionMode = UHSS::AcquisitionMode::CONT_WITH_TRIGGER_ZERO_DEAD;
-		}
-		else if (mode == ADImageSingle)
-		{
-			params.acquisitionMode = UHSS::AcquisitionMode::START_WITH_TRIGGER_ZERO_DEAD;
-		}
-		else if (mode == ADImageMultiple)
-		{
-			params.acquisitionMode = UHSS::AcquisitionMode::START_WITH_TRIGGER_FIXED_TIME_ZERO_DEAD;
-		}
-	}
-	
-	int readmode;
-	
-	this->getIntegerParam(RigakuReadMode, &readmode);
-	
-	if (readmode == B32_Single)
-	{
-		if (dead == 1)
-		{
-			params.imagingMode = UHSS::ImagingMode::B16_ZERO_DEADTIME;
-			
-			this->setIntegerParam(RigakuReadMode, B16_Zero_Deadtime);
-			this->callParamCallbacks();
-		}
-		else
-		{
-			params.imagingMode = UHSS::ImagingMode::B32_SINGLE;
-		}
-	}
-	else if (readmode == B16_2S)
-	{
-		if (dead == 1)
-		{
-			params.imagingMode = UHSS::ImagingMode::B16_ZERO_DEADTIME;
-			
-			this->setIntegerParam(RigakuReadMode, B16_Zero_Deadtime);
-			this->callParamCallbacks();
-		}
-		else
-		{
-			params.imagingMode = UHSS::ImagingMode::B16_2S;
-		}
-	}
-	else if (readmode == B16_Zero_Deadtime)
-	{
-		if (dead == 0)
-		{
-			params.imagingMode = UHSS::ImagingMode::B32_SINGLE;
-			
-			this->setIntegerParam(RigakuReadMode, B32_Single);
-			this->callParamCallbacks();
-		}
-		else
-		{
-			params.imagingMode = UHSS::ImagingMode::B16_ZERO_DEADTIME;
-			params.zeroDeadTimeDataLength = UHSS::ZDTDataLength::ZDT_16BIT;
-		}
-	}
-	else if (readmode == B8_Zero_Deadtime)
-	{
-		if (dead == 0)
-		{
-			params.imagingMode = UHSS::ImagingMode::B32_SINGLE;
-			
-			this->setIntegerParam(RigakuReadMode, B32_Single);
-			this->callParamCallbacks();
-		}
-		else
-		{
-			params.imagingMode = UHSS::ImagingMode::B8_ZERO_DEADTIME;
-			params.zeroDeadTimeDataLength = UHSS::ZDTDataLength::ZDT_8BIT;
-		}
-	}
-	else if (readmode == B4_Zero_Deadtime)
-	{
-		if (dead == 0)
-		{
-			params.imagingMode = UHSS::ImagingMode::B32_SINGLE;
-			
-			this->setIntegerParam(RigakuReadMode, B32_Single);
-			this->callParamCallbacks();
-		}
-		else
-		{
-			params.imagingMode = UHSS::ImagingMode::B4_ZERO_DEADTIME;
-			params.zeroDeadTimeDataLength = UHSS::ZDTDataLength::ZDT_4BIT;
-		}
-	}
-	else if (readmode == B2_Zero_Deadtime)
-	{
-		if (dead == 0)
-		{
-			params.imagingMode = UHSS::ImagingMode::B32_SINGLE;
-			
-			this->setIntegerParam(RigakuReadMode, B32_Single);
-			this->callParamCallbacks();
-		}
-		else
-		{
-			params.imagingMode = UHSS::ImagingMode::B2_ZERO_DEADTIME;
-			params.zeroDeadTimeDataLength = UHSS::ZDTDataLength::ZDT_2BIT;
-		}
-	}
-	
-	
+	params.acquisitionMode = trigger;
+	params.imagingMode = mode;		
 	
 	int datatype;
 	

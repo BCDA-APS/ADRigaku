@@ -1,24 +1,5 @@
 include "ADBase.template"
 
-record(bo, "$(P)$(R)ZeroDead")
-{
-	field(PINI, "YES")
-	field(DTYP, "asynInt32")
-	field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_ZERO_DEAD")
-	field(ZNAM, "False")
-	field(ONAM, "True")
-	field(VAL,  "0")
-}
-
-record(bi, "$(P)$(R)ZeroDead_RBV")
-{
-	field(DTYP, "asynInt32")
-	field(INP,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_ZERO_DEAD")
-	field(ZNAM, "False")
-	field(ONAM, "True")
-	field(SCAN, "I/O Intr")
-}
-
 record(bo, "$(P)$(R)FlatFieldCorrection")
 {
 	field(PINI, "YES")
@@ -174,39 +155,206 @@ record(mbbi, "$(P)$(R)InterChip_RBV")
 	field(SCAN, "I/O Intr")
 }
 
-record(mbbo, "$(P)$(R)ReadMode")
-{
-	field(PINI, "YES")
-	field(DTYP, "asynInt32")
-	field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_READ_MODE")
-	field(ZRST, "32 bit")
-	field(ZRVL, "0")
-	field(ONST, "16 bit x 2")
-	field(ONVL, "1")
-	field(TWST, "8 bit")
-	field(TWVL, "2")
-	field(THST, "4 bit")
-	field(THVL, "3")
-	field(FRST, "2 bit")
-	field(FRVL, "4")
+record(mbbo, "$(P)$(R)ImageMode")
+{	
+	field(ZRST, "32 Bit Single")
+	field(ZRVL, "1")
+	
+	field(ONST, "16 Bit x 2")
+	field(ONVL, "2")
+	
+	field(TWST, "16 Bit, Zero-Deadtime")
+	field(TWVL, "4")
+	
+	field(THST, "8 Bit, Zero-Deadtime")
+	field(THVL, "5")
+	
+	field(FRST, "4 Bit, Zero-Deadtime")
+	field(FRVL, "6")
+	
+	field(FVST, "2 Bit, Zero-Deadtime")
+	field(FVVL, "7")
+	
+	field(SXST, "8 Bit, 2S")
+	field(SXVL, "8")
+	
+	field(SVST, "4 Bit, 2S")
+	field(SVVL, "9")
+	
+	field(EIST, "2 Bit, 2S")
+	field(EIVL, "10")
+	
+	field(NIST, "16 Bit, 1S")
+	field(NIVL, "11")
+	
+	field(TEST, "8 Bit, 1S")
+	field(TEVL, "12")
+	
+	field(ELST, "4 Bit, 1S")
+	field(ELVL, "13")
+	
+	field(TVST, "2 Bit, 1S")
+	field(TVVL, "14")
+	
+	field(TTST, "2 Bit, Burst Mode")
+	field(TTVL, "15")
+	
+	field(FTST, "1 Bit, Burst Mode")
+	field(FTVL, "16")
+	
 	field(VAL, "0")
 }
 
-record(mbbi, "$(P)$(R)ReadMode_RBV")
-{
-	field(DTYP, "asynInt32")
-	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_READ_MODE")
-	field(ZRST, "32 bit")
-	field(ZRVL, "0")
-	field(ONST, "16 bit x 2")
-	field(ONVL, "1")
-	field(TWST, "8 bit")
-	field(TWVL, "2")
-	field(THST, "4 bit")
-	field(THVL, "3")
-	field(FRST, "2 bit")
-	field(FRVL, "4")
+record(mbbi, "$(P)$(R)ImageMode_RBV")
+{	
+	field(ZRST, "32 Bit Single")
+	field(ZRVL, "1")
+	
+	field(ONST, "16 Bit x 2")
+	field(ONVL, "2")
+	
+	field(TWST, "16 Bit, Zero-Deadtime")
+	field(TWVL, "4")
+	
+	field(THST, "8 Bit, Zero-Deadtime")
+	field(THVL, "5")
+	
+	field(FRST, "4 Bit, Zero-Deadtime")
+	field(FRVL, "6")
+	
+	field(FVST, "2 Bit, Zero-Deadtime")
+	field(FVVL, "7")
+	
+	field(SXST, "8 Bit, 2S")
+	field(SXVL, "8")
+	
+	field(SVST, "4 Bit, 2S")
+	field(SVVL, "9")
+	
+	field(EIST, "2 Bit, 2S")
+	field(EIVL, "10")
+	
+	field(NIST, "16 Bit, 1S")
+	field(NIVL, "11")
+	
+	field(TEST, "8 Bit, 1S")
+	field(TEVL, "12")
+	
+	field(ELST, "4 Bit, 1S")
+	field(ELVL, "13")
+	
+	field(TVST, "2 Bit, 1S")
+	field(TVVL, "14")
+	
+	field(TTST, "2 Bit, Burst Mode")
+	field(TTVL, "15")
+	
+	field(FTST, "1 Bit, Burst Mode")
+	field(FTVL, "16")
+	
 	field(SCAN, "I/O Intr")
+}
+
+record(mbbo, "$(P)$(R)TriggerMode")
+{
+	field(ZRST, "Fixed Time")
+	field(ZRVL, "0")
+	
+	field(ONST, "Continuous Exposure")
+	field(ONVL, "1")
+	
+	field(TWST, "Start with Trigger")
+	field(TWVL, "2")
+	
+	field(THST, "Gated Trigger")
+	field(THVL, "3")
+	
+	field(FRST, "ZeroDead Fixed Time")
+	field(FRVL, "4")
+	
+	field(FVST, "ZeroDead Continuous")
+	field(FVVL, "5")
+	
+	field(SXST, "ZeroDead Trigger Start")
+	field(SXVL, "6")
+	
+	field(SVST, "Fixed Time Trigger Start")
+	field(SVVL, "7")
+	
+	field(EIST, "ZeroDead Fixed Time Trigger Start")
+	field(EIVL, "8")
+	
+	field(NIST, "Burst Mode")
+	field(NIVL, "9")
+	
+	field(TEST, "Burst Mode Trigger Start")
+	field(TEVL, "10")
+	
+	field(ELST, "Burst Mode Gated Trigger")
+	field(ELVL, "11")
+	
+	field(TVST, "Trigger Sync")
+	field(TVVL, "12")
+	
+	field(TTST, "Pileup Trigger Start")
+	field(TTVL, "13")
+	
+	field(FTST, "Pileup Gated Trigger")
+	field(FTVL, "14")
+	
+	field(FFST, "Pileup Trigger Sync")
+	field(FFVL, "15")
+}
+
+record(mbbi, "$(P)$(R)TriggerMode_RBV")
+{
+	field(ZRST, "Fixed Time")
+	field(ZRVL, "0")
+	
+	field(ONST, "Continuous Exposure")
+	field(ONVL, "1")
+	
+	field(TWST, "Start with Trigger")
+	field(TWVL, "2")
+	
+	field(THST, "Gated Trigger")
+	field(THVL, "3")
+	
+	field(FRST, "ZeroDead Fixed Time")
+	field(FRVL, "4")
+	
+	field(FVST, "ZeroDead Continuous")
+	field(FVVL, "5")
+	
+	field(SXST, "ZeroDead Trigger Start")
+	field(SXVL, "6")
+	
+	field(SVST, "Fixed Time Trigger Start")
+	field(SVVL, "7")
+	
+	field(EIST, "ZeroDead Fixed Time Trigger Start")
+	field(EIVL, "8")
+	
+	field(NIST, "Burst Mode")
+	field(NIVL, "9")
+	
+	field(TEST, "Burst Mode Trigger Start")
+	field(TEVL, "10")
+	
+	field(ELST, "Burst Mode Gated Trigger")
+	field(ELVL, "11")
+	
+	field(TVST, "Trigger Sync")
+	field(TVVL, "12")
+	
+	field(TTST, "Pileup Trigger Start")
+	field(TTVL, "13")
+	
+	field(FTST, "Pileup Gated Trigger")
+	field(FTVL, "14")
+	
+	field(FFST, "Pileup Trigger Sync")
+	field(FFVL, "15")
 }
 
 record(ao, "$(P)$(R)UpperThreshold")
