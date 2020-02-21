@@ -34,13 +34,12 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 		{
 			printf("State Change\n");
 			
-			if (state.acquisitionState == UHSS::Status::NORMAL_END ||
-			    state.acquisitionState == UHSS::Status::TERMINATED ||
-				state.acquisitionState == UHSS::Status::NOIMAGE)
+			if (state.operationState == UHSS::Status::IDLE)
 			{
-				this->setIntegerParam(ADStatus, ADStatusIdle);
-				this->setIntegerParam(ADAcquireBusy, 0);
-				this->setIntegerParam(ADAcquire, 0);
+				printf("Switching to idle\n");
+				this->setIntegerParam(this->ADStatus, ADStatusIdle);
+				this->setIntegerParam(this->ADAcquireBusy, 0);
+				this->setIntegerParam(this->ADAcquire, 0);
 				callParamCallbacks();
 			}
 			
@@ -65,6 +64,8 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 		}
 		case UHSS::FrameAvailable:
 		{
+			printf("Frame Available\n");
+			
 			size_t image_dims[2];
 
 			image_dims[0] = state.outputDataset.numColumns;
@@ -124,7 +125,7 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 }
 
 void ADRigaku::processImage()
-{
+{	
 	int image_number;
 	int total_images;
 
@@ -164,10 +165,14 @@ ADRigaku::ADRigaku(const char *portName, int maxBuffers, size_t maxMemory, int p
 	ADDriver::createParam(RigakuOuterEdgeString, asynParamInt32, &RigakuOuterEdge);
 	ADDriver::createParam(RigakuPileupString, asynParamInt32, &RigakuPileup);
 	
+	ADDriver::createParam(RigakuAcquisitionDelayString, asynParamFloat64, &RigakuAcquisitionDelay);
 	ADDriver::createParam(RigakuExposureDelayString, asynParamFloat64, &RigakuExposureDelay);
 	ADDriver::createParam(RigakuExposureIntervalString, asynParamFloat64, &RigakuExposureInterval);
 	
 	ADDriver::createParam(RigakuCalibrationLabelString, asynParamOctet, &RigakuCalibrationLabel);
+	
+	setDoubleParam(RigakuExposureDelay, 0.0);
+	setStringParam(RigakuCalibrationLabel, "");
 	
 	this->connect(pasynUserSelf);
 	
@@ -191,8 +196,6 @@ asynStatus ADRigaku::writeInt32(asynUser *pasynUser, epicsInt32 value)
 	
 	//Record for later use
 	this->getIntegerParam(ADStatus, &adStatus);
-	
-	this->setIntegerParam(function, value);
 	
 	if (function == ADAcquire)
 	{ 
@@ -226,6 +229,7 @@ asynStatus ADRigaku::writeInt32(asynUser *pasynUser, epicsInt32 value)
 		status = ADDriver::writeInt32(pasynUser, value);
 	}
 	
+	this->setIntegerParam(function, value);
 	callParamCallbacks();
 	return (asynStatus) status;
 }
@@ -350,25 +354,30 @@ void ADRigaku::startAcquisition()
 			break;
 	}
 
+	
+	
 	params.acqTriggerMode = UHSS::TriggerMode::RISING_EDGE;
 	params.expTriggerMode = UHSS::TriggerMode::RISING_EDGE;
 	params.readoutBits = 0;
 	params.noiseElimination = UHSS::NoiseElimination::LOW;
 	
-	double exposure, interval, delay;
+	double exposure, interval, exp_delay, acq_delay;
 	
 	this->getDoubleParam(ADAcquireTime, &exposure);
 	this->getDoubleParam(RigakuExposureInterval, &interval);
-	this->getDoubleParam(RigakuExposureDelay, &delay);
+	this->getDoubleParam(RigakuExposureDelay, &exp_delay);
+	this->getDoubleParam(RigakuAcquisitionDelay, &acq_delay);
 	
 	params.exposureTime = exposure;
 	params.exposureInterval = interval;
-	params.exposureDelay = delay;
-	
-	params.acquisitionDelay = 0.0;
+	params.exposureDelay = exp_delay;
+	params.acquisitionDelay = acq_delay;
 	
 	api.setParameters(params);
 	api.startAcq();
+	
+	this->setIntegerParam(this->ADStatus, ADStatusAcquire);
+	this->callParamCallbacks();
 }
 
 void ADRigaku::stopAcquisition()

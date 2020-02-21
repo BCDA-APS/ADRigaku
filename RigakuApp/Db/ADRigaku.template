@@ -269,19 +269,19 @@ record(mbbo, "$(P)$(R)TriggerMode")
 	field(THST, "Gated Trigger")
 	field(THVL, "3")
 	
-	field(FRST, "ZeroDead Fixed Time")
+	field(FRST, "ZDT Fixed Time")
 	field(FRVL, "4")
 	
-	field(FVST, "ZeroDead Continuous")
+	field(FVST, "ZDT Continuous")
 	field(FVVL, "5")
 	
-	field(SXST, "ZeroDead Trigger Start")
+	field(SXST, "ZDT Trigger Start")
 	field(SXVL, "6")
 	
 	field(SVST, "Fixed Time Trigger Start")
 	field(SVVL, "7")
 	
-	field(EIST, "ZeroDead Fixed Time Trigger Start")
+	field(EIST, "ZDT Fixed Trigger Start")
 	field(EIVL, "8")
 	
 	field(NIST, "Burst Mode")
@@ -320,19 +320,19 @@ record(mbbi, "$(P)$(R)TriggerMode_RBV")
 	field(THST, "Gated Trigger")
 	field(THVL, "3")
 	
-	field(FRST, "ZeroDead Fixed Time")
+	field(FRST, "ZDT Fixed Time")
 	field(FRVL, "4")
 	
-	field(FVST, "ZeroDead Continuous")
+	field(FVST, "ZDT Continuous")
 	field(FVVL, "5")
 	
-	field(SXST, "ZeroDead Trigger Start")
+	field(SXST, "ZDT Trigger Start")
 	field(SXVL, "6")
 	
 	field(SVST, "Fixed Time Trigger Start")
 	field(SVVL, "7")
 	
-	field(EIST, "ZeroDead Fixed Time Trigger Start")
+	field(EIST, "ZDT Fixed Trigger Start")
 	field(EIVL, "8")
 	
 	field(NIST, "Burst Mode")
@@ -361,6 +361,7 @@ record(ao, "$(P)$(R)UpperThreshold")
 {
 	field(DTYP, "asynFloat64")
 	field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_UPPER_THRESHOLD")
+	field(PREC, 3)
 }
 
 record(ai, "$(P)$(R)UpperThreshold_RBV")
@@ -369,12 +370,14 @@ record(ai, "$(P)$(R)UpperThreshold_RBV")
 	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_UPPER_THRESHOLD")
 	field(SCAN, "I/O Intr")
 	field(PINI, "YES")
+	field(PREC, 3)
 }
 
 record(ao, "$(P)$(R)LowerThreshold")
 {
 	field(DTYP, "asynFloat64")
 	field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_LOWER_THRESHOLD")
+	field(PREC, 3)
 }
 
 record(ai, "$(P)$(R)LowerThreshold_RBV")
@@ -383,12 +386,14 @@ record(ai, "$(P)$(R)LowerThreshold_RBV")
 	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_LOWER_THRESHOLD")
 	field(SCAN, "I/O Intr")
 	field(PINI, "YES")
+	field(PREC, 3)
 }
 
 record(ao, "$(P)$(R)ExposureDelay")
 {
 	field(DTYP, "asynFloat64")
 	field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_EXPOSURE_DELAY")
+	field(PREC, 3)
 }
 
 record(ai, "$(P)$(R)ExposureDelay_RBV")
@@ -397,12 +402,33 @@ record(ai, "$(P)$(R)ExposureDelay_RBV")
 	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_EXPOSURE_DELAY")
 	field(SCAN, "I/O Intr")
 	field(PINI, "YES")
+	field(PREC, 3)
 }
+
+record(ao, "$(P)$(R)AcquisitionDelay")
+{
+	field(DTYP, "asynFloat64")
+	field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_ACQUISITION_DELAY")
+	field(PINI, "YES")
+	field(PREC, 3)
+}
+
+record(ai, "$(P)$(R)AcquisitionDelay_RBV")
+{
+	field(DTYP, "asynFloat64")
+	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_ACQUISITION_DELAY")
+	field(SCAN, "I/O Intr")
+	field(PINI, "YES")
+	field(PREC, 3)
+}
+
 
 record(ao, "$(P)$(R)ExposureInterval")
 {
 	field(DTYP, "asynFloat64")
 	field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_EXPOSURE_INTERVAL")
+	field(PINI, "YES")
+	field(PREC, 3)
 }
 
 record(ai, "$(P)$(R)ExposureInterval_RBV")
@@ -411,12 +437,13 @@ record(ai, "$(P)$(R)ExposureInterval_RBV")
 	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_EXPOSURE_INTERVAL")
 	field(SCAN, "I/O Intr")
 	field(PINI, "YES")
+	field(PREC, 3)
 }
 
 record(stringout, "$(P)$(R)CalibrationLabel")
 {
 	field(DTYP, "asynOctetWrite")
-	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_CALIBRATION_LABEL")
+	field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_CALIBRATION_LABEL")
 }
 
 record(stringin, "$(P)$(R)CalibrationLabel_RBV")

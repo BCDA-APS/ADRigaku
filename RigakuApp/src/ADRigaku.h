@@ -18,6 +18,7 @@
 #define RigakuOuterEdgeString "RIGAKU_OUTER_EDGE"
 #define RigakuPileupString "RIGAKU_PILEUP"
 
+#define RigakuAcquisitionDelayString "RIGAKU_ACQUISITION_DELAY"
 #define RigakuExposureDelayString "RIGAKU_EXPOSURE_DELAY"
 #define RigakuExposureIntervalString "RIGAKU_EXPOSURE_INTERVAL"
 
@@ -53,6 +54,7 @@ protected:
 	int RigakuOuterEdge;
 	int RigakuPileup;
 	
+	int RigakuAcquisitionDelay;
 	int RigakuExposureDelay;
 	int RigakuExposureInterval;
 	
@@ -62,6 +64,6 @@ private:
 	UHSS::AcqManager& api;
 };
 
-#define NUM_RIGAKU_PARAMS 14
+#define NUM_RIGAKU_PARAMS 15
 
 #endif
