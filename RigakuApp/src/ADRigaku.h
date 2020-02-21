@@ -24,6 +24,12 @@
 
 #define RigakuCalibrationLabelString "RIGAKU_CALIBRATION_LABEL"
 
+#define RigakuUsernameString "RIGAKU_USERNAME"
+#define RigakuPasswordString "RIGAKU_PASSWORD"
+#define RigakuFilepathString "RIGAKU_FILE_PATH"
+#define RigakuFilenameString "RIGAKU_FILE_NAME"
+#define RigakuCorrectionsString "RIGAKU_CORRECTIONS"
+
 
 class epicsShareClass ADRigaku: public ADDriver, public UHSS::ManagerCallback {
 public:
@@ -60,10 +66,16 @@ protected:
 	
 	int RigakuCalibrationLabel;
 	
+	int RigakuUsername;
+	int RigakuPassword;
+	int RigakuCorrections;
+	int RigakuFilepath;
+	int RigakuFilename;
+	
 private:
 	UHSS::AcqManager& api;
 };
 
-#define NUM_RIGAKU_PARAMS 15
+#define NUM_RIGAKU_PARAMS 19
 
 #endif

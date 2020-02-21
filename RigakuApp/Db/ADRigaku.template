@@ -1,5 +1,85 @@
 include "ADBase.template"
 
+record(bi, "$(P)$(R)Corrections")
+{
+	field(PINI, "YES")
+	field(DTYP, "asynInt32")
+	field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_CORRECTIONS")
+	field(ZNAM, "Disabled")
+	field(ONAM, "Enabled")
+	field(VAL,  "0")
+}
+
+record(stringout, "$(P)$(R)Username")
+{
+	field(DTYP, "asynOctetWrite")
+	field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_USERNAME")
+	field(PINI, "YES")
+}
+
+record(stringin, "$(P)$(R)Username_RBV")
+{
+	field(DTYP, "asynOctetRead")
+	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_USERNAME")
+	field(PINI, "YES")
+	field(SCAN, "I/O Intr")
+}
+
+record(stringout, "$(P)$(R)Password")
+{
+	field(DTYP, "asynOctetWrite")
+	field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_PASSWORD")
+	field(PINI, "YES")
+}
+
+record(stringin, "$(P)$(R)Password_RBV")
+{
+	field(DTYP, "asynOctetRead")
+	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_PASSWORD")
+	field(PINI, "YES")
+	field(SCAN, "I/O Intr")
+}
+
+record(waveform, "$(P)$(R)FilePath")
+{
+    field(PINI, "YES")
+    field(DTYP, "asynOctetWrite")
+    field(INP,  "@asyn($(PORT),$(ADDR=0),$(TIMEOUT=1))RIGAKU_FILE_PATH")
+    field(FTVL, "CHAR")
+    field(NELM, "256")
+    field(PINI, "YES")
+}
+
+record(waveform, "$(P)$(R)FilePath_RBV")
+{
+    field(DTYP, "asynOctetRead")
+    field(INP,  "@asyn($(PORT),$(ADDR=0),$(TIMEOUT=1))RIGAKU_FILE_PATH")
+    field(FTVL, "CHAR")
+    field(NELM, "256")
+    field(SCAN, "I/O Intr")
+	field(PINI, "YES")
+}
+
+record(waveform, "$(P)$(R)FileName")
+{
+    field(PINI, "YES")
+    field(DTYP, "asynOctetWrite")
+    field(INP,  "@asyn($(PORT),$(ADDR=0),$(TIMEOUT=1))RIGAKU_FILE_NAME")
+    field(FTVL, "CHAR")
+    field(NELM, "256")
+    field(PINI, "YES")
+}
+
+record(waveform, "$(P)$(R)FileName_RBV")
+{
+    field(DTYP, "asynOctetRead")
+    field(INP,  "@asyn($(PORT),$(ADDR=0),$(TIMEOUT=1))RIGAKU_FILE_NAME")
+    field(FTVL, "CHAR")
+    field(NELM, "256")
+    field(SCAN, "I/O Intr")
+	field(PINI, "YES")
+}
+
 record(bo, "$(P)$(R)FlatFieldCorrection")
 {
 	field(PINI, "YES")

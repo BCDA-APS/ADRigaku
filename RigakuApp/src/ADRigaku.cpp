@@ -171,6 +171,13 @@ ADRigaku::ADRigaku(const char *portName, int maxBuffers, size_t maxMemory, int p
 	
 	ADDriver::createParam(RigakuCalibrationLabelString, asynParamOctet, &RigakuCalibrationLabel);
 	
+	ADDriver::createParam(RigakuCorrectionsString, asynParamInt32, &RigakuCorrections);
+	ADDriver::createParam(RigakuUsernameString, asynParamOctet, &RigakuUsername);
+	ADDriver::createParam(RigakuPasswordString, asynParamOctet, &RigakuPassword);
+	ADDriver::createParam(RigakuFilepathString, asynParamOctet, &RigakuFilepath);
+	ADDriver::createParam(RigakuFilenameString, asynParamOctet, &RigakuFilename);
+	
+	
 	setDoubleParam(RigakuExposureDelay, 0.0);
 	setStringParam(RigakuCalibrationLabel, "");
 	
@@ -223,6 +230,26 @@ asynStatus ADRigaku::writeInt32(asynUser *pasynUser, epicsInt32 value)
 		this->getIntegerParam(RigakuPileup, &values[6]);
 		
 		api.controlCorrections(NULL, 0, values);
+	}
+	else if (function == RigakuCorrections)
+	{
+		if (value == 1)
+		{
+			std::string user, pass, path;
+			
+			this->getStringParam(RigakuUsername, user);
+			this->getStringParam(RigakuPassword, pass);
+			this->getStringParam(RigakuFilepath, path);
+		
+			api.controlCorrection("Diversion", 1); // Switch sparse matrix mode ON
+			api.controlCorrection("Diversion", "user", user.c_str()); // Set username required to mount the network drive
+			api.controlCorrection("Diversion", "password", pass.c_str()); // Set password required to mount the network drive
+			api.controlCorrection("Diversion", "share", path.c_str()); // Set path to the network drive.
+		}
+		else
+		{
+			api.controlCorrection("Diversion", 0);
+		}
 	}
 	else
 	{
@@ -353,8 +380,6 @@ void ADRigaku::startAcquisition()
 			params.outputMode = UHSS::OutputMode::IEEE_FLOAT;
 			break;
 	}
-
-	
 	
 	params.acqTriggerMode = UHSS::TriggerMode::RISING_EDGE;
 	params.expTriggerMode = UHSS::TriggerMode::RISING_EDGE;
@@ -374,6 +399,13 @@ void ADRigaku::startAcquisition()
 	params.acquisitionDelay = acq_delay;
 	
 	api.setParameters(params);
+	
+	std::string filename;
+	
+	this->getStringParam(RigakuFilename, filename);
+	
+	api.controlCorrection("Diversion", "filename", filename.c_str());
+	
 	api.startAcq();
 	
 	this->setIntegerParam(this->ADStatus, ADStatusAcquire);
