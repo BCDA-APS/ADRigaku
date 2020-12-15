@@ -2,7 +2,7 @@ include "ADBase.template"
 
 record(bo, "$(P)$(R)ZeroDead")
 {
-	field(PINI, "YES")
+	field(PINI, 1)
 	field(DTYP, "asynInt32")
 	field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_ZERO_DEAD")
 	field(ZNAM, "False")
@@ -21,7 +21,7 @@ record(bi, "$(P)$(R)ZeroDead_RBV")
 
 record(bo, "$(P)$(R)FlatFieldCorrection")
 {
-	field(PINI, "YES")
+	field(PINI, 1)
 	field(DTYP, "asynInt32")
 	field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_FLAT_FIELD")
 	field(ZNAM, "Disabled")
@@ -40,7 +40,7 @@ record(bi, "$(P)$(R)FlatFieldCorrection_RBV")
 
 record(bo, "$(P)$(R)Redistribution")
 {
-	field(PINI, "YES")
+	field(PINI, 1)
 	field(DTYP, "asynInt32")
 	field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_REDISTRIBUTION")
 	field(ZNAM, "Disabled")
@@ -59,7 +59,7 @@ record(bi, "$(P)$(R)Redistribution_RBV")
 
 record(bo, "$(P)$(R)OuterEdge")
 {
-	field(PINI, "YES")
+	field(PINI, 1)
 	field(DTYP, "asynInt32")
 	field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_OUTER_EDGE")
 	field(ZNAM, "Disabled")
@@ -78,7 +78,7 @@ record(bi, "$(P)$(R)OuterEdge_RBV")
 
 record(bo, "$(P)$(R)Pileup")
 {
-	field(PINI, "YES")
+	field(PINI, 1)
 	field(DTYP, "asynInt32")
 	field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_PILEUP")
 	field(ZNAM, "Disabled")
@@ -97,7 +97,7 @@ record(bi, "$(P)$(R)Pileup_RBV")
 
 record(mbbo, "$(P)$(R)PixelCorrection")
 {
-	field(PINI, "YES")
+	field(PINI, 1)
 	field(DTYP, "asynInt32")
 	field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_PIXEL_CORRECTION")
 	field(ZRST, "Disabled")
@@ -124,7 +124,7 @@ record(mbbi, "$(P)$(R)PixelCorrection_RBV")
 
 record(mbbo, "$(P)$(R)CountingRate")
 {
-	field(PINI, "YES")
+	field(PINI, 1)
 	field(DTYP, "asynInt32")
 	field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_COUNTING_RATE")
 	field(ZRST, "Disabled")
@@ -150,7 +150,7 @@ record(mbbi, "$(P)$(R)CountingRate_RBV")
 
 record(mbbo, "$(P)$(R)InterChip")
 {
-	field(PINI, "YES")
+	field(PINI, 1)
 	field(DTYP, "asynInt32")
 	field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_INTER_CHIP")
 	field(ZRST, "Disabled")
@@ -176,7 +176,7 @@ record(mbbi, "$(P)$(R)InterChip_RBV")
 
 record(mbbo, "$(P)$(R)ReadMode")
 {
-	field(PINI, "YES")
+	field(PINI, 1)
 	field(DTYP, "asynInt32")
 	field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_READ_MODE")
 	field(ZRST, "32 bit")
@@ -220,7 +220,7 @@ record(ai, "$(P)$(R)UpperThreshold_RBV")
 	field(DTYP, "asynFloat64")
 	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_UPPER_THRESHOLD")
 	field(SCAN, "I/O Intr")
-	field(PINI, "YES")
+	field(PINI, 1)
 }
 
 record(ao, "$(P)$(R)LowerThreshold")
@@ -234,7 +234,7 @@ record(ai, "$(P)$(R)LowerThreshold_RBV")
 	field(DTYP, "asynFloat64")
 	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_LOWER_THRESHOLD")
 	field(SCAN, "I/O Intr")
-	field(PINI, "YES")
+	field(PINI, 1)
 }
 
 record(ao, "$(P)$(R)ReferenceThreshold")
@@ -248,5 +248,5 @@ record(ai, "$(P)$(R)ReferenceThreshold_RBV")
 	field(DTYP, "asynFloat64")
 	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_REF_THRESHOLD")
 	field(SCAN, "I/O Intr")
-	field(PINI, "YES")
+	field(PINI, 1)
 }

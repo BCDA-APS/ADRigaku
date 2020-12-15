@@ -73,6 +73,10 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 				image_dims[1] = image_dims[1] * 2;
 			}
 			
+			printf("Columns: %d\n", state.outputDataset.numColumns);
+			printf("Rows: %d\n", state.outputDataset.numRows);
+			printf("Bytes: %d\n", state.outputDataset.frameSize);
+			
 			char* buffer = (char*) malloc(state.outputDataset.frameSize);
 			api.getImages(buffer, 0, 1);
 			
@@ -164,7 +168,7 @@ ADRigaku::ADRigaku(const char *portName, int maxBuffers, size_t maxMemory, int p
 	this->connect(pasynUserSelf);
 	
 	api.setCallback(*this);
-	api.initialize(true);
+	api.initialize("XSPA-Simulator");
 	
 	epicsAtExit(RigakuExit, this);
 }
@@ -484,6 +488,7 @@ void ADRigaku::startAcquisition()
 void ADRigaku::stopAcquisition()
 {
 	api.stop();
+	api.clearError();
 }
 
 /* Code for iocsh registration */
