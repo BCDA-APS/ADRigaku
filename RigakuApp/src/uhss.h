@@ -54,6 +54,13 @@ namespace UHSS {
 		const int	START_WITH_TRIGGER_ZERO_DEAD		= 6;
 		const int	START_WITH_TRIGGER_FIXED_TIME		= 7;
 		const int	START_WITH_TRIGGER_FIXED_TIME_ZERO_DEAD	= 8;
+		const int	BURST					= 9;
+		const int	START_WITH_TRIGGER_BURST		= 10;
+		const int	GATED_TRIGGER_BURST			= 11;
+		const int	TRIGGER_SYNC				= 12;
+		const int	START_WITH_TRIGGER_PILEUP		= 13;
+		const int	GATED_TRIGGER_PILEUP			= 14;
+		const int	TRIGGER_SYNC_PILEUP			= 15;
 
 	};
 
@@ -75,6 +82,8 @@ namespace UHSS {
 		const int	B8_1S			= 12;
 		const int	B4_1S			= 13;
 		const int	B2_1S			= 14;
+	        const int	B2_BURST        	= 15;
+	        const int	B1_BURST        	= 16;
 
 	};
 
@@ -203,6 +212,8 @@ namespace UHSS {
 	 */
 	typedef	struct {
 		const char	*label;
+		double		minEnergy;
+		double		maxEnergy;
 		Array<double>	energy;
 		Array<int>	attenuation;
 	} CalibTable;
@@ -272,6 +283,7 @@ namespace UHSS {
 	class	UHSS_API	Parameters {
 	public:
 		int			numFrames;
+		int			numPileup;
 		int			acquisitionMode;
 		int			outputMode;
 		int			imagingMode;
@@ -301,6 +313,7 @@ namespace UHSS {
 	class	UHSS_API	ParameterRanges {
 	public:
 		PRange<int>		numFrames;
+		PRange<int>		numPileup;
 		PRange<int>		acquisitionMode;
 		PRange<int>		outputMode;
 		PRange<int>		imagingMode;

@@ -34,9 +34,12 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 		{
 			printf("State Change\n");
 			
-			if (state.serverState == UHSS::Status::IDLE)
+			if (state.operationState == UHSS::Status::IDLE)
 			{
-				this->setIntegerParam(ADStatus, ADStatusIdle);
+				printf("Switching to idle\n");
+				this->setIntegerParam(this->ADStatus, ADStatusIdle);
+				this->setIntegerParam(this->ADAcquireBusy, 0);
+				this->setIntegerParam(this->ADAcquire, 0);
 				callParamCallbacks();
 			}
 			
@@ -52,9 +55,8 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 			
 			UHSS::Configuration config = api.getConfiguration();
 			
-			this->setDoubleParam(RigakuUpperThreshold, config.upperThreshold);
-			this->setDoubleParam(RigakuLowerThreshold, config.lowerThreshold);
-			this->setDoubleParam(RigakuReferenceThreshold, config.refThreshold);
+			this->setDoubleParam(RigakuUpperThreshold, config.upperEnergy);
+			this->setDoubleParam(RigakuLowerThreshold, config.lowerEnergy);
 			
 			this->callParamCallbacks();
 			
@@ -62,6 +64,8 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 		}
 		case UHSS::FrameAvailable:
 		{
+			printf("Frame Available\n");
+			
 			size_t image_dims[2];
 
 			image_dims[0] = state.outputDataset.numColumns;
@@ -100,6 +104,9 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 			}
 			
 			memcpy(this->pArrays[0]->pData, buffer, state.outputDataset.frameSize);
+			
+			delete buffer;
+			
 			this->processImage();
 			
 			break;
@@ -122,7 +129,7 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 }
 
 void ADRigaku::processImage()
-{
+{	
 	int image_number;
 	int total_images;
 
@@ -151,11 +158,8 @@ ADRigaku::ADRigaku(const char *portName, int maxBuffers, size_t maxMemory, int p
 	         asynEnumMask, asynEnumMask, ASYN_CANBLOCK, 1, priority, stackSize),
 	api(UHSS::getAPI())
 {
-	ADDriver::createParam(RigakuZeroDeadString, asynParamInt32, &RigakuZeroDead);
-	ADDriver::createParam(RigakuReadModeString, asynParamInt32, &RigakuReadMode);
 	ADDriver::createParam(RigakuUpperThresholdString, asynParamFloat64, &RigakuUpperThreshold);
 	ADDriver::createParam(RigakuLowerThresholdString, asynParamFloat64, &RigakuLowerThreshold);
-	ADDriver::createParam(RigakuReferenceThresholdString, asynParamFloat64, &RigakuReferenceThreshold);
 	
 	ADDriver::createParam(RigakuBadPixelString, asynParamInt32, &RigakuBadPixel);
 	ADDriver::createParam(RigakuCountingRateString, asynParamInt32, &RigakuCountingRate);
@@ -164,6 +168,22 @@ ADRigaku::ADRigaku(const char *portName, int maxBuffers, size_t maxMemory, int p
 	ADDriver::createParam(RigakuRedistributionString, asynParamInt32, &RigakuRedistribution);
 	ADDriver::createParam(RigakuOuterEdgeString, asynParamInt32, &RigakuOuterEdge);
 	ADDriver::createParam(RigakuPileupString, asynParamInt32, &RigakuPileup);
+	
+	ADDriver::createParam(RigakuAcquisitionDelayString, asynParamFloat64, &RigakuAcquisitionDelay);
+	ADDriver::createParam(RigakuExposureDelayString, asynParamFloat64, &RigakuExposureDelay);
+	ADDriver::createParam(RigakuExposureIntervalString, asynParamFloat64, &RigakuExposureInterval);
+	
+	ADDriver::createParam(RigakuCalibrationLabelString, asynParamOctet, &RigakuCalibrationLabel);
+	
+	ADDriver::createParam(RigakuCorrectionsString, asynParamInt32, &RigakuCorrections);
+	ADDriver::createParam(RigakuUsernameString, asynParamOctet, &RigakuUsername);
+	ADDriver::createParam(RigakuPasswordString, asynParamOctet, &RigakuPassword);
+	ADDriver::createParam(RigakuFilepathString, asynParamOctet, &RigakuFilepath);
+	ADDriver::createParam(RigakuFilenameString, asynParamOctet, &RigakuFilename);
+	
+	
+	setDoubleParam(RigakuExposureDelay, 0.0);
+	setStringParam(RigakuCalibrationLabel, "");
 	
 	this->connect(pasynUserSelf);
 	
@@ -187,8 +207,6 @@ asynStatus ADRigaku::writeInt32(asynUser *pasynUser, epicsInt32 value)
 	
 	//Record for later use
 	this->getIntegerParam(ADStatus, &adStatus);
-	
-	this->setIntegerParam(function, value);
 	
 	if (function == ADAcquire)
 	{ 
@@ -217,11 +235,32 @@ asynStatus ADRigaku::writeInt32(asynUser *pasynUser, epicsInt32 value)
 		
 		api.controlCorrections(NULL, 0, values);
 	}
+	else if (function == RigakuCorrections)
+	{
+		if (value == 1)
+		{
+			std::string user, pass, path;
+			
+			this->getStringParam(RigakuUsername, user);
+			this->getStringParam(RigakuPassword, pass);
+			this->getStringParam(RigakuFilepath, path);
+		
+			api.controlCorrection("Diversion", 1); // Switch sparse matrix mode ON
+			api.controlCorrection("Diversion", "user", user.c_str()); // Set username required to mount the network drive
+			api.controlCorrection("Diversion", "password", pass.c_str()); // Set password required to mount the network drive
+			api.controlCorrection("Diversion", "share", path.c_str()); // Set path to the network drive.
+		}
+		else
+		{
+			api.controlCorrection("Diversion", 0);
+		}
+	}
 	else
 	{
 		status = ADDriver::writeInt32(pasynUser, value);
 	}
 	
+	this->setIntegerParam(function, value);
 	callParamCallbacks();
 	return (asynStatus) status;
 }
@@ -234,18 +273,18 @@ asynStatus ADRigaku::writeFloat64(asynUser *pasynUser, epicsFloat64 value)
 	this->setDoubleParam(function, value);
 	
 	UHSS::Configuration config = api.getConfiguration();
+
+	std::string calib;
+	
+	this->getStringParam(RigakuCalibrationLabel, calib);
 	
 	if (function == RigakuLowerThreshold)
 	{
-		api.setThreshold(value, config.upperThreshold, config.refThreshold);
+		api.setEnergy(calib.c_str(), value, config.upperEnergy, 1);
 	}
 	else if (function == RigakuUpperThreshold)
 	{
-		api.setThreshold(config.lowerThreshold, value, config.refThreshold);
-	}
-	else if (function == RigakuReferenceThreshold)
-	{
-		api.setThreshold(config.lowerThreshold, config.upperThreshold, value);
+		api.setEnergy(calib.c_str(), config.lowerEnergy, value, 1);
 	}
 	else
 	{
@@ -263,21 +302,34 @@ asynStatus ADRigaku::readFloat64(asynUser *pasynUser, epicsFloat64 *value)
 	
 	UHSS::Configuration config = api.getConfiguration();
 	
-	if (function == RigakuLowerThreshold)
-	{
-		*value = config.lowerThreshold;
-	}
-	else if (function == RigakuUpperThreshold)
-	{
-		*value = config.upperThreshold;
-	}
-	else if (function == RigakuReferenceThreshold)
-	{
-		*value = config.refThreshold;
-	}
+	if      (function == RigakuLowerThreshold)    { *value = config.lowerEnergy; }
+	else if (function == RigakuUpperThreshold)    { *value = config.upperEnergy; }
 	else
 	{
 		status = ADDriver::readFloat64(pasynUser, value);
+	}
+	
+	callParamCallbacks();
+	return (asynStatus) status;
+}
+
+asynStatus ADRigaku::writeOctet(asynUser* pasynUser, const char* value, size_t nChars, size_t* actual)
+{
+	int function = pasynUser->reason;
+	int status = asynSuccess;
+	
+	this->setStringParam(function, value);
+	
+	UHSS::Configuration config = api.getConfiguration();
+	
+	if (function == RigakuCalibrationLabel)
+	{
+		api.setEnergy(value, config.lowerEnergy, config.upperEnergy, 1);
+		*actual = sizeof(value);
+	}
+	else
+	{
+		status = ADDriver::writeOctet(pasynUser, value, nChars, actual);
 	}
 	
 	callParamCallbacks();
@@ -290,145 +342,13 @@ void ADRigaku::startAcquisition()
 	
 	this->getIntegerParam(ADNumImages, &params.numFrames);
 	
-	int dead, trigger, mode;
+	int trigger, mode;
 	
-	this->getIntegerParam(RigakuZeroDead, &dead);
 	this->getIntegerParam(ADTriggerMode, &trigger);
 	this->getIntegerParam(ADImageMode, &mode);
 	
-	if (dead == 0 && trigger == ADTriggerInternal)
-	{
-		params.acquisitionMode = UHSS::AcquisitionMode::FIXED_TIME;
-	}
-	else if (dead == 0 && trigger == ADTriggerExternal)
-	{
-		if (mode == ADImageContinuous)
-		{
-			params.acquisitionMode = UHSS::AcquisitionMode::CONT_WITH_TRIGGER;
-		}
-		else if (mode == ADImageSingle)
-		{
-			params.acquisitionMode = UHSS::AcquisitionMode::START_WITH_TRIGGER;
-		}
-		else
-		{
-			params.acquisitionMode = UHSS::AcquisitionMode::START_WITH_TRIGGER_FIXED_TIME;
-		}
-	}
-	else if (dead == 1 && trigger == ADTriggerInternal)
-	{
-		params.acquisitionMode = UHSS::AcquisitionMode::FIXED_TIME_ZERO_DEAD;
-	}
-	else if (dead == 1 && trigger == ADTriggerExternal)
-	{
-		if (mode == ADImageContinuous)
-		{
-			params.acquisitionMode = UHSS::AcquisitionMode::CONT_WITH_TRIGGER_ZERO_DEAD;
-		}
-		else if (mode == ADImageSingle)
-		{
-			params.acquisitionMode = UHSS::AcquisitionMode::START_WITH_TRIGGER_ZERO_DEAD;
-		}
-		else if (mode == ADImageMultiple)
-		{
-			params.acquisitionMode = UHSS::AcquisitionMode::START_WITH_TRIGGER_FIXED_TIME_ZERO_DEAD;
-		}
-	}
-	
-	int readmode;
-	
-	this->getIntegerParam(RigakuReadMode, &readmode);
-	
-	if (readmode == B32_Single)
-	{
-		if (dead == 1)
-		{
-			params.imagingMode = UHSS::ImagingMode::B16_ZERO_DEADTIME;
-			
-			this->setIntegerParam(RigakuReadMode, B16_Zero_Deadtime);
-			this->callParamCallbacks();
-		}
-		else
-		{
-			params.imagingMode = UHSS::ImagingMode::B32_SINGLE;
-		}
-	}
-	else if (readmode == B16_2S)
-	{
-		if (dead == 1)
-		{
-			params.imagingMode = UHSS::ImagingMode::B16_ZERO_DEADTIME;
-			
-			this->setIntegerParam(RigakuReadMode, B16_Zero_Deadtime);
-			this->callParamCallbacks();
-		}
-		else
-		{
-			params.imagingMode = UHSS::ImagingMode::B16_2S;
-		}
-	}
-	else if (readmode == B16_Zero_Deadtime)
-	{
-		if (dead == 0)
-		{
-			params.imagingMode = UHSS::ImagingMode::B32_SINGLE;
-			
-			this->setIntegerParam(RigakuReadMode, B32_Single);
-			this->callParamCallbacks();
-		}
-		else
-		{
-			params.imagingMode = UHSS::ImagingMode::B16_ZERO_DEADTIME;
-			params.zeroDeadTimeDataLength = UHSS::ZDTDataLength::ZDT_16BIT;
-		}
-	}
-	else if (readmode == B8_Zero_Deadtime)
-	{
-		if (dead == 0)
-		{
-			params.imagingMode = UHSS::ImagingMode::B32_SINGLE;
-			
-			this->setIntegerParam(RigakuReadMode, B32_Single);
-			this->callParamCallbacks();
-		}
-		else
-		{
-			params.imagingMode = UHSS::ImagingMode::B8_ZERO_DEADTIME;
-			params.zeroDeadTimeDataLength = UHSS::ZDTDataLength::ZDT_8BIT;
-		}
-	}
-	else if (readmode == B4_Zero_Deadtime)
-	{
-		if (dead == 0)
-		{
-			params.imagingMode = UHSS::ImagingMode::B32_SINGLE;
-			
-			this->setIntegerParam(RigakuReadMode, B32_Single);
-			this->callParamCallbacks();
-		}
-		else
-		{
-			params.imagingMode = UHSS::ImagingMode::B4_ZERO_DEADTIME;
-			params.zeroDeadTimeDataLength = UHSS::ZDTDataLength::ZDT_4BIT;
-		}
-	}
-	else if (readmode == B2_Zero_Deadtime)
-	{
-		if (dead == 0)
-		{
-			params.imagingMode = UHSS::ImagingMode::B32_SINGLE;
-			
-			this->setIntegerParam(RigakuReadMode, B32_Single);
-			this->callParamCallbacks();
-		}
-		else
-		{
-			params.imagingMode = UHSS::ImagingMode::B2_ZERO_DEADTIME;
-			params.zeroDeadTimeDataLength = UHSS::ZDTDataLength::ZDT_2BIT;
-		}
-	}
-	
-	
+	params.acquisitionMode = trigger;
+	params.imagingMode = mode;		
 	
 	int datatype;
 	
@@ -464,25 +384,36 @@ void ADRigaku::startAcquisition()
 			params.outputMode = UHSS::OutputMode::IEEE_FLOAT;
 			break;
 	}
-
+	
 	params.acqTriggerMode = UHSS::TriggerMode::RISING_EDGE;
 	params.expTriggerMode = UHSS::TriggerMode::RISING_EDGE;
 	params.readoutBits = 0;
 	params.noiseElimination = UHSS::NoiseElimination::LOW;
 	
-	double exposure, period;
+	double exposure, interval, exp_delay, acq_delay;
 	
 	this->getDoubleParam(ADAcquireTime, &exposure);
-	this->getDoubleParam(ADAcquirePeriod, &period);
+	this->getDoubleParam(RigakuExposureInterval, &interval);
+	this->getDoubleParam(RigakuExposureDelay, &exp_delay);
+	this->getDoubleParam(RigakuAcquisitionDelay, &acq_delay);
 	
 	params.exposureTime = exposure;
-	params.exposureInterval = period - exposure;
-	
-	params.exposureDelay = 0.0;
-	params.acquisitionDelay = 0.0;
+	params.exposureInterval = interval;
+	params.exposureDelay = exp_delay;
+	params.acquisitionDelay = acq_delay;
 	
 	api.setParameters(params);
+	
+	std::string filename;
+	
+	this->getStringParam(RigakuFilename, filename);
+	
+	api.controlCorrection("Diversion", "filename", filename.c_str());
+	
 	api.startAcq();
+	
+	this->setIntegerParam(this->ADStatus, ADStatusAcquire);
+	this->callParamCallbacks();
 }
 
 void ADRigaku::stopAcquisition()
