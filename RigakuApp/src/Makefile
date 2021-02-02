@@ -6,7 +6,8 @@ include $(TOP)/configure/CONFIG
 LIBRARY_IOC = ADRigaku
 LIB_SRCS += ADRigaku.cpp
 
-acqmanager_DIR += $(TOP)/RigakuApp/src/
+# Adjust directory if the acqmanager library is installed somewhere else 
+acqmanager_DIR += $(RIGAKU_LIB)
 ADRigaku_LIBS += acqmanager
 
 DBD += RigakuSupport.dbd

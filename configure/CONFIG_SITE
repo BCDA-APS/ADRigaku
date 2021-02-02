@@ -8,6 +8,13 @@
 #   CONFIG_SITE.Common.$(T_A)
 #   CONFIG_SITE.$(EPICS_HOST_ARCH).$(T_A)
 
+
+# Configure RIGAKU_LIB to point to where the libacqmanager.so library is
+RIGAKU_LIB = /Rigaku/lib
+
+
+
+
 # CHECK_RELEASE controls the consistency checking of the support
 #   applications pointed to by the RELEASE* files.
 # Normally CHECK_RELEASE should be set to YES.
