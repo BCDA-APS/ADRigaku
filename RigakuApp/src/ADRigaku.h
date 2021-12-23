@@ -47,6 +47,7 @@ public:
 	
 	void startAcquisition();
 	void stopAcquisition();
+	bool checkAcquisitionStatus();
 	void processImage();
 
 protected:
