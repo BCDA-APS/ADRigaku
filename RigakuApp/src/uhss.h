@@ -131,8 +131,9 @@ namespace UHSS {
 		const int	DIFFERENTIATION		= 5;
 		const int	OUTER_EDGE		= 6;
 		const int	PILEUP			= 7;
-		const int	BINNING			= 8;
+		const int	DIVERSION		= 8;
 		const int	CLIP			= 9;
+		const int	BINNING			= 10;
 
 		// Values of the elements
 
@@ -353,7 +354,6 @@ namespace UHSS {
 		virtual	const Parameters	&getParameters() = 0;
 
 		virtual	const char	*getVersion() = 0;
-		virtual	bool		initialize(bool = false) = 0;
 		virtual	bool		initialize(const char *) = 0;
 		virtual	void		shutdown(int = 0) = 0;
 		virtual	int		logLevel(int = -1) = 0;

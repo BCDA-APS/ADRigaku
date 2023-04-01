@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <iocsh.h>
+#include <cstring>
 
+#include <epicsThread.h>
 #include <epicsTime.h>
 #include <epicsExit.h>
 #include <epicsExport.h>
@@ -22,6 +24,26 @@ extern "C"
 void RigakuConfig(const char* portName, const char* configuration, int maxBuffers, size_t maxMemory, int priority, int stackSize)
 {
 	ADRigaku* driver = new ADRigaku(portName, configuration, maxBuffers, maxMemory, priority, stackSize);
+}
+
+void RigakuTest()
+{
+	UHSS::AcqManager& api = UHSS::getAPI();
+
+	api.initialize("XSPA");
+}
+
+void spawn_thread_callback(void* arg)
+{
+	ADRigaku* driver = (ADRigaku*) arg;
+	
+	bool continuing = true;
+
+	while (continuing)
+	{
+		continuing = !driver->checkAcquisitionStatus();
+		epicsThreadSleep(1.0);
+	}
 }
 
 void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
@@ -58,7 +80,9 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 		case UHSS::ConfigurationChanged:
 		{			
 			UHSS::Configuration config = api.getConfiguration();
-			
+
+			if (config.calibTable.label == NULL)    { break; }
+
 			this->setStringParam(RigakuCalibrationLabel, config.calibTable.label);
 			this->setDoubleParam(RigakuUpperThreshold, config.upperEnergy);
 			this->setDoubleParam(RigakuLowerThreshold, config.lowerEnergy);
@@ -190,7 +214,7 @@ ADRigaku::ADRigaku(const char *portName, const char* configuration, int maxBuffe
 	this->connect(pasynUserSelf);
 	
 	api.setCallback(*this);
-	
+
 	if (! api.initialize(configuration))
 	{
 		this->setStringParam(ADStatusMessage, "Couldn't connect to server");
@@ -229,6 +253,8 @@ asynStatus ADRigaku::writeInt32(asynUser *pasynUser, epicsInt32 value)
 		}
 		else if (adStatus == ADStatusAcquire && value == 0)
 		{
+			this->setStringParam(ADStatusMessage, "Terminating Acquisition...");
+			callParamCallbacks();
 			this->stopAcquisition();
 		}
 	}
@@ -250,7 +276,7 @@ asynStatus ADRigaku::writeInt32(asynUser *pasynUser, epicsInt32 value)
 		// Only set when detector is idle
 		
 		int curr_status;
-		
+
 		this->getIntegerParam(this->ADStatus, &curr_status);
 		
 		while (curr_status != ADStatusIdle)
@@ -462,7 +488,29 @@ void ADRigaku::startAcquisition()
 void ADRigaku::stopAcquisition()
 {
 	api.stop();
-	api.clearError();
+
+	epicsThreadCreate("Check stop thread",
+	epicsThreadPriorityLow,
+	epicsThreadGetStackSize(epicsThreadStackMedium),
+	(EPICSTHREADFUNC)::spawn_thread_callback, (void*) this);
+}
+
+bool ADRigaku::checkAcquisitionStatus()
+{
+	UHSS::State state = api.getState();
+
+	printf("State: %d\n", state.operationState);
+
+	if (state.operationState == UHSS::Status::TERMINATED)
+	{
+		api.clearError();
+			
+		this->setStringParam(ADStatusMessage, "");
+		callParamCallbacks();
+		return true;
+	}
+
+	return false;
 }
 
 /* Code for iocsh registration */
@@ -477,6 +525,13 @@ static const iocshArg RigakuConfigArg5 = { "stackSize", iocshArgInt };
 static const iocshArg * const RigakuConfigArgs[] = { &RigakuConfigArg0,
 	&RigakuConfigArg1, &RigakuConfigArg2, &RigakuConfigArg3, &RigakuConfigArg4, &RigakuConfigArg5};
 
+static const iocshArg * const RigakuTestArgs[] = {};
+static void testRigakuCallFunc(const iocshArgBuf *args)
+{
+	RigakuTest();
+}
+static const iocshFuncDef testRigaku = { "RigakuTest", 0, RigakuTestArgs };
+
 static void configRigakuCallFunc(const iocshArgBuf *args) 
 {
 	RigakuConfig(args[0].sval, args[1].sval, args[2].ival, args[3].ival, args[4].ival, args[5].ival);
@@ -486,6 +541,7 @@ static const iocshFuncDef configRigaku = { "RigakuConfig", 6, RigakuConfigArgs }
 static void RigakuRegister(void) 
 {
 	iocshRegister(&configRigaku, configRigakuCallFunc);
+	iocshRegister(&testRigaku, testRigakuCallFunc);
 }
 
 extern "C" 
