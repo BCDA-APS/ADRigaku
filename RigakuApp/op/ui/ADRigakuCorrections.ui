@@ -392,7 +392,7 @@ border-radius: 2px;
      <set>Qt::AlignAbsolute|Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
     </property>
     <property name="channel" stdset="0">
-     <string notr="true">$(P)$(R)FilePath_RBV</string>
+     <string notr="true">$(P)$(R)SharePath_RBV</string>
     </property>
     <property name="foreground">
      <color>
@@ -440,7 +440,7 @@ border-radius: 2px;
      </rect>
     </property>
     <property name="channel" stdset="0">
-     <string notr="true">$(P)$(R)FilePath</string>
+     <string notr="true">$(P)$(R)SharePath</string>
     </property>
     <property name="foreground">
      <color>
@@ -475,7 +475,7 @@ border-radius: 2px;
      <enum>caLineEdit::WidthAndHeight</enum>
     </property>
     <property name="formatType">
-     <enum>caLineEdit::decimal</enum>
+     <enum>caLineEdit::string</enum>
     </property>
    </widget>
    <widget class="caLabel" name="caLabel_4">
@@ -514,29 +514,36 @@ border-radius: 2px;
      <enum>QFrame::NoFrame</enum>
     </property>
    </widget>
-   <widget class="caChoice" name="cachoice">
+   <widget class="caMenu" name="camenu">
     <property name="geometry">
      <rect>
-      <x>5</x>
-      <y>10</y>
+      <x>15</x>
+      <y>5</y>
       <width>100</width>
-      <height>20</height>
+      <height>24</height>
      </rect>
     </property>
     <property name="channel" stdset="0">
      <string notr="true">$(P)$(R)Corrections</string>
     </property>
-    <property name="stackingMode" stdset="0">
-     <enum>caChoice::Column</enum>
+    <property name="colorMode">
+     <enum>caMenu::Static</enum>
+    </property>
+    <property name="background">
+     <color>
+      <red>155</red>
+      <green>223</green>
+      <blue>255</blue>
+     </color>
     </property>
    </widget>
   </widget>
  </widget>
  <customwidgets>
   <customwidget>
-   <class>caChoice</class>
-   <extends>QWidget</extends>
-   <header>caChoice</header>
+   <class>caMenu</class>
+   <extends>QComboBox</extends>
+   <header>caMenu</header>
   </customwidget>
   <customwidget>
    <class>caTextEntry</class>

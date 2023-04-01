@@ -26,6 +26,7 @@
 
 #define RigakuUsernameString "RIGAKU_USERNAME"
 #define RigakuPasswordString "RIGAKU_PASSWORD"
+#define RigakuFileshareString "RIGAKU_SHARE_PATH"
 #define RigakuFilepathString "RIGAKU_FILE_PATH"
 #define RigakuFilenameString "RIGAKU_FILE_NAME"
 #define RigakuCorrectionsString "RIGAKU_CORRECTIONS"
@@ -33,7 +34,7 @@
 
 class epicsShareClass ADRigaku: public ADDriver, public UHSS::ManagerCallback {
 public:
-    ADRigaku(const char *portName, int maxBuffers, size_t maxMemory, int priority, int stackSize);
+    ADRigaku(const char *portName, const char* configuration, int maxBuffers, size_t maxMemory, int priority, int stackSize);
     ~ADRigaku();
 	void notify(UHSS::AcqManager& manager, UHSS::StatusEvent status);
 	
@@ -69,6 +70,7 @@ protected:
 	int RigakuUsername;
 	int RigakuPassword;
 	int RigakuCorrections;
+	int RigakuSharepath;
 	int RigakuFilepath;
 	int RigakuFilename;
 	
@@ -76,6 +78,6 @@ private:
 	UHSS::AcqManager& api;
 };
 
-#define NUM_RIGAKU_PARAMS 19
+#define NUM_RIGAKU_PARAMS 20
 
 #endif

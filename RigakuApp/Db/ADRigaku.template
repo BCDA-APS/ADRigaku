@@ -1,6 +1,6 @@
 include "ADBase.template"
 
-record(bi, "$(P)$(R)Corrections")
+record(bo, "$(P)$(R)Corrections")
 {
 	field(PINI, 1)
 	field(DTYP, "asynInt32")
@@ -38,6 +38,26 @@ record(stringin, "$(P)$(R)Password_RBV")
 	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_PASSWORD")
 	field(PINI, "YES")
 	field(SCAN, "I/O Intr")
+}
+
+record(waveform, "$(P)$(R)SharePath")
+{
+    field(PINI, "YES")
+    field(DTYP, "asynOctetWrite")
+    field(INP,  "@asyn($(PORT),$(ADDR=0),$(TIMEOUT=1))RIGAKU_SHARE_PATH")
+    field(FTVL, "CHAR")
+    field(NELM, "256")
+    field(PINI, "YES")
+}
+
+record(waveform, "$(P)$(R)SharePath_RBV")
+{
+    field(DTYP, "asynOctetRead")
+    field(INP,  "@asyn($(PORT),$(ADDR=0),$(TIMEOUT=1))RIGAKU_SHARE_PATH")
+    field(FTVL, "CHAR")
+    field(NELM, "256")
+    field(SCAN, "I/O Intr")
+	field(PINI, "YES")
 }
 
 record(waveform, "$(P)$(R)FilePath")
@@ -338,8 +358,6 @@ record(mbbi, "$(P)$(R)ImageMode_RBV")
 record(mbbo, "$(P)$(R)TriggerMode")
 {
 	field(PINI, 1)
-	field(DTYP, "asynInt32")
-	field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_READ_MODE")
 	field(ZRST, "Fixed Time")
 	field(ZRVL, "0")
 	
@@ -444,7 +462,7 @@ record(ao, "$(P)$(R)UpperThreshold")
 {
 	field(DTYP, "asynFloat64")
 	field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_UPPER_THRESHOLD")
-	field(PREC, 3)
+	field(PREC, 4)
 }
 
 record(ai, "$(P)$(R)UpperThreshold_RBV")
@@ -453,14 +471,14 @@ record(ai, "$(P)$(R)UpperThreshold_RBV")
 	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_UPPER_THRESHOLD")
 	field(SCAN, "I/O Intr")
 	field(PINI, "YES")
-	field(PREC, 3)
+	field(PREC, 4)
 }
 
 record(ao, "$(P)$(R)LowerThreshold")
 {
 	field(DTYP, "asynFloat64")
 	field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_LOWER_THRESHOLD")
-	field(PREC, 3)
+	field(PREC, 4)
 }
 
 record(ai, "$(P)$(R)LowerThreshold_RBV")
@@ -469,7 +487,7 @@ record(ai, "$(P)$(R)LowerThreshold_RBV")
 	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_LOWER_THRESHOLD")
 	field(SCAN, "I/O Intr")
 	field(PINI, "YES")
-	field(PREC, 3)
+	field(PREC, 4)
 }
 
 record(ao, "$(P)$(R)ExposureDelay")
@@ -486,6 +504,16 @@ record(ai, "$(P)$(R)ExposureDelay_RBV")
 	field(SCAN, "I/O Intr")
 	field(PINI, "YES")
 	field(PREC, 3)
+}
+
+record(ao, "$(P)$(R)AcquireTime")
+{
+	field(PREC, 6)
+}
+
+record(ai, "$(P)$(R)AcquireTime_RBV")
+{
+	field(PREC, 6)
 }
 
 record(ao, "$(P)$(R)AcquisitionDelay")

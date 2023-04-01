@@ -19,9 +19,9 @@ extern "C"
 	}
 }
 
-void RigakuConfig(const char* portName, int maxBuffers, size_t maxMemory, int priority, int stackSize)
+void RigakuConfig(const char* portName, const char* configuration, int maxBuffers, size_t maxMemory, int priority, int stackSize)
 {
-	ADRigaku* driver = new ADRigaku(portName, maxBuffers, maxMemory, priority, stackSize);
+	ADRigaku* driver = new ADRigaku(portName, configuration, maxBuffers, maxMemory, priority, stackSize);
 }
 
 void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
@@ -31,12 +31,19 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 	switch (status)
 	{
 		case UHSS::StateChanged:
-		{
-			printf("State Change\n");
-			
-			if (state.operationState == UHSS::Status::IDLE)
+		{	
+			if (state.acquisitionState == UHSS::Status::TERMINATED ||
+			    state.acquisitionState == UHSS::Status::NORMAL_END)
 			{
-				printf("Switching to idle\n");
+				int corrections;
+	
+				this->getIntegerParam(this->RigakuCorrections, &corrections);
+	
+				if (corrections == 0)    { api.deleteDataset(0); }
+			}
+		
+			if (state.operationState == UHSS::Status::IDLE)
+			{			
 				this->setIntegerParam(this->ADStatus, ADStatusIdle);
 				this->setIntegerParam(this->ADAcquireBusy, 0);
 				this->setIntegerParam(this->ADAcquire, 0);
@@ -46,17 +53,17 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 			break;
 		}
 		case UHSS::EnvironmentChanged:
-			printf("Environ Change\n");
 			break;
 			
 		case UHSS::ConfigurationChanged:
-		{
-			printf("Config Change\n");
-			
+		{			
 			UHSS::Configuration config = api.getConfiguration();
 			
+			this->setStringParam(RigakuCalibrationLabel, config.calibTable.label);
 			this->setDoubleParam(RigakuUpperThreshold, config.upperEnergy);
 			this->setDoubleParam(RigakuLowerThreshold, config.lowerEnergy);
+			this->setIntegerParam(ADMaxSizeX, config.numColumns);
+			this->setIntegerParam(ADMaxSizeY, config.numRows);
 			
 			this->callParamCallbacks();
 			
@@ -64,8 +71,6 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 		}
 		case UHSS::FrameAvailable:
 		{
-			printf("Frame Available\n");
-			
 			size_t image_dims[2];
 
 			image_dims[0] = state.outputDataset.numColumns;
@@ -76,10 +81,6 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 			{
 				image_dims[1] = image_dims[1] * 2;
 			}
-			
-			printf("Columns: %d\n", state.outputDataset.numColumns);
-			printf("Rows: %d\n", state.outputDataset.numRows);
-			printf("Bytes: %d\n", state.outputDataset.frameSize);
 			
 			char* buffer = (char*) malloc(state.outputDataset.frameSize);
 			api.getImages(buffer, 0, 1);
@@ -153,7 +154,7 @@ void ADRigaku::processImage()
 	this->callParamCallbacks();
 }
 
-ADRigaku::ADRigaku(const char *portName, int maxBuffers, size_t maxMemory, int priority, int stackSize) :
+ADRigaku::ADRigaku(const char *portName, const char* configuration, int maxBuffers, size_t maxMemory, int priority, int stackSize) :
 	ADDriver(portName, 1, int(NUM_RIGAKU_PARAMS), maxBuffers, maxMemory,
 	         asynEnumMask, asynEnumMask, ASYN_CANBLOCK, 1, priority, stackSize),
 	api(UHSS::getAPI())
@@ -178,6 +179,7 @@ ADRigaku::ADRigaku(const char *portName, int maxBuffers, size_t maxMemory, int p
 	ADDriver::createParam(RigakuCorrectionsString, asynParamInt32, &RigakuCorrections);
 	ADDriver::createParam(RigakuUsernameString, asynParamOctet, &RigakuUsername);
 	ADDriver::createParam(RigakuPasswordString, asynParamOctet, &RigakuPassword);
+	ADDriver::createParam(RigakuFileshareString, asynParamOctet, &RigakuSharepath);
 	ADDriver::createParam(RigakuFilepathString, asynParamOctet, &RigakuFilepath);
 	ADDriver::createParam(RigakuFilenameString, asynParamOctet, &RigakuFilename);
 	
@@ -188,13 +190,22 @@ ADRigaku::ADRigaku(const char *portName, int maxBuffers, size_t maxMemory, int p
 	this->connect(pasynUserSelf);
 	
 	api.setCallback(*this);
-	api.initialize("XSPA-Simulator");
+	
+	if (! api.initialize(configuration))
+	{
+		this->setStringParam(ADStatusMessage, "Couldn't connect to server");
+		return;
+	}
+
+	this->callParamCallbacks();
 	
 	epicsAtExit(RigakuExit, this);
 }
 
 ADRigaku::~ADRigaku()
 { 
+	api.deleteDataset(0);
+
 	this->disconnect(pasynUserSelf);
 	api.shutdown(0);
 }
@@ -212,6 +223,8 @@ asynStatus ADRigaku::writeInt32(asynUser *pasynUser, epicsInt32 value)
 	{ 
 		if (adStatus == ADStatusIdle && value == 1)
 		{
+			this->setStringParam(ADStatusMessage, "Starting Acquisition...");
+			callParamCallbacks();
 			this->startAcquisition();
 		}
 		else if (adStatus == ADStatusAcquire && value == 0)
@@ -223,7 +236,8 @@ asynStatus ADRigaku::writeInt32(asynUser *pasynUser, epicsInt32 value)
 	         function == RigakuFlatField || function == RigakuRedistribution || function == RigakuOuterEdge ||
 	         function == RigakuPileup)
 	{
-		int values[9];
+		int values[9] = { 0 };
+		int test[1] = { 0 };
 		
 		this->getIntegerParam(RigakuBadPixel, &values[0]);
 		this->getIntegerParam(RigakuCountingRate, &values[1]);
@@ -232,8 +246,20 @@ asynStatus ADRigaku::writeInt32(asynUser *pasynUser, epicsInt32 value)
 		this->getIntegerParam(RigakuRedistribution, &values[4]);
 		this->getIntegerParam(RigakuOuterEdge, &values[5]);
 		this->getIntegerParam(RigakuPileup, &values[6]);
+
+		// Only set when detector is idle
 		
-		api.controlCorrections(NULL, 0, values);
+		int curr_status;
+		
+		this->getIntegerParam(this->ADStatus, &curr_status);
+		
+		while (curr_status != ADStatusIdle)
+		{
+			epicsThreadSleep(1);
+			this->getIntegerParam(this->ADStatus, &curr_status);
+		}
+		
+		api.controlCorrections(test, 7, values);
 	}
 	else if (function == RigakuCorrections)
 	{
@@ -243,7 +269,7 @@ asynStatus ADRigaku::writeInt32(asynUser *pasynUser, epicsInt32 value)
 			
 			this->getStringParam(RigakuUsername, user);
 			this->getStringParam(RigakuPassword, pass);
-			this->getStringParam(RigakuFilepath, path);
+			this->getStringParam(RigakuSharepath, path);
 		
 			api.controlCorrection("Diversion", 1); // Switch sparse matrix mode ON
 			api.controlCorrection("Diversion", "user", user.c_str()); // Set username required to mount the network drive
@@ -348,7 +374,7 @@ void ADRigaku::startAcquisition()
 	this->getIntegerParam(ADImageMode, &mode);
 	
 	params.acquisitionMode = trigger;
-	params.imagingMode = mode;		
+	params.imagingMode = mode;
 	
 	int datatype;
 	
@@ -384,7 +410,7 @@ void ADRigaku::startAcquisition()
 			params.outputMode = UHSS::OutputMode::IEEE_FLOAT;
 			break;
 	}
-	
+		
 	params.acqTriggerMode = UHSS::TriggerMode::RISING_EDGE;
 	params.expTriggerMode = UHSS::TriggerMode::RISING_EDGE;
 	params.readoutBits = 0;
@@ -397,7 +423,8 @@ void ADRigaku::startAcquisition()
 	this->getDoubleParam(RigakuExposureDelay, &exp_delay);
 	this->getDoubleParam(RigakuAcquisitionDelay, &acq_delay);
 	
-	params.exposureTime = exposure;
+	//Exposure time is set in seconds but sent in milliseconds
+	params.exposureTime = exposure * 1000;
 	params.exposureInterval = interval;
 	params.exposureDelay = exp_delay;
 	params.acquisitionDelay = acq_delay;
@@ -405,14 +432,30 @@ void ADRigaku::startAcquisition()
 	api.setParameters(params);
 	
 	std::string filename;
+	std::string filepath;
 	
+	this->getStringParam(RigakuFilepath, filepath);
 	this->getStringParam(RigakuFilename, filename);
 	
-	api.controlCorrection("Diversion", "filename", filename.c_str());
+	std::string fullpath = filepath;
 	
-	api.startAcq();
+	if (filepath.at(filepath.length() - 1) != '/')    { fullpath += "/"; }
 	
-	this->setIntegerParam(this->ADStatus, ADStatusAcquire);
+	fullpath += filename;
+	
+	api.controlCorrection("Diversion", "filepath", fullpath.c_str());
+	
+	if(api.startAcq())
+	{
+		this->setStringParam(ADStatusMessage, "");
+		this->setIntegerParam(this->ADStatus, ADStatusAcquire);
+	}
+	else
+	{
+		this->setStringParam(ADStatusMessage, "Error in starting acquire");
+		this->setIntegerParam(this->ADStatus, ADStatusError);
+	}
+	
 	this->callParamCallbacks();
 }
 
@@ -426,18 +469,19 @@ void ADRigaku::stopAcquisition()
 
 /* RigakuConfig */
 static const iocshArg RigakuConfigArg0 = { "Port name", iocshArgString };
-static const iocshArg RigakuConfigArg1 = { "maxBuffers", iocshArgInt };
-static const iocshArg RigakuConfigArg2 = { "maxMemory", iocshArgInt };
-static const iocshArg RigakuConfigArg3 = { "priority", iocshArgInt };
-static const iocshArg RigakuConfigArg4 = { "stackSize", iocshArgInt };
+static const iocshArg RigakuConfigArg1 = { "Configuration", iocshArgString };
+static const iocshArg RigakuConfigArg2 = { "maxBuffers", iocshArgInt };
+static const iocshArg RigakuConfigArg3 = { "maxMemory", iocshArgInt };
+static const iocshArg RigakuConfigArg4 = { "priority", iocshArgInt };
+static const iocshArg RigakuConfigArg5 = { "stackSize", iocshArgInt };
 static const iocshArg * const RigakuConfigArgs[] = { &RigakuConfigArg0,
-	&RigakuConfigArg1, &RigakuConfigArg2, &RigakuConfigArg3, &RigakuConfigArg4};
+	&RigakuConfigArg1, &RigakuConfigArg2, &RigakuConfigArg3, &RigakuConfigArg4, &RigakuConfigArg5};
 
 static void configRigakuCallFunc(const iocshArgBuf *args) 
 {
-	RigakuConfig(args[0].sval, args[1].ival, args[2].ival, args[3].ival, args[4].ival);
+	RigakuConfig(args[0].sval, args[1].sval, args[2].ival, args[3].ival, args[4].ival, args[5].ival);
 }
-static const iocshFuncDef configRigaku = { "RigakuConfig", 5, RigakuConfigArgs };
+static const iocshFuncDef configRigaku = { "RigakuConfig", 6, RigakuConfigArgs };
 
 static void RigakuRegister(void) 
 {
