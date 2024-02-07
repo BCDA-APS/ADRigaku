@@ -1,5 +1,6 @@
 $(P)$(R)FlatFieldCorrection
 $(P)$(R)Redistribution
+$(P)$(R)Differentiation
 $(P)$(R)OuterEdge
 $(P)$(R)Pileup
 $(P)$(R)PixelCorrection
@@ -7,16 +8,17 @@ $(P)$(R)CountingRate
 $(P)$(R)InterChip
 $(P)$(R)ImageMode
 $(P)$(R)TriggerMode
+$(P)$(R)DualThreshold
 $(P)$(R)UpperThreshold
 $(P)$(R)LowerThreshold
-$(P)$(R)AcquisitionDelay
-$(P)$(R)ExposureDelay
-$(P)$(R)ExposureInterval
+$(P)$(R)AcquireDelay
 $(P)$(R)CalibrationLabel
-$(P)$(R)Username
-$(P)$(R)Password
 $(P)$(R)FilePath
 $(P)$(R)FileName
 $(P)$(R)Corrections
+$(P)$(R)SparseEnable
+$(P)$(R)TriggerEdge
+$(P)$(R)OutputResolution
+$(P)$(R)NoiseElimination
 
 file "ADBase_settings.req", "P=$(P), R=$(R)

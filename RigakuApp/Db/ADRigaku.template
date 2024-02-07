@@ -1,5 +1,184 @@
 include "ADBase.template"
 
+
+record(mbbo, "$(P)$(R)ImageMode")
+{	
+	field(ZRST, "Standard")
+	field(ZRVL, "0")
+	
+	field(ONST, "Zero-Deadtime")
+	field(ONVL, "1")
+	
+	field(TWST, "Burst-Mode")
+	field(TWVL, "2")
+	
+	field(THST, "Pileup")
+	field(THVL, "3")
+	
+	field(FRST, "Pileup PPP")
+	field(FRVL, "6")
+	
+	field(VAL, "0")
+}
+
+record(mbbi, "$(P)$(R)ImageMode_RBV")
+{	
+	field(ZRST, "Standard")
+	field(ZRVL, "0")
+	
+	field(ONST, "Zero-Deadtime")
+	field(ONVL, "1")
+	
+	field(TWST, "Burst-Mode")
+	field(TWVL, "2")
+	
+	field(THST, "Pileup")
+	field(THVL, "3")
+	
+	field(FRST, "Pileup PPP")
+	field(FRVL, "6")
+	
+	field(SCAN, "I/O Intr")
+}
+
+record(mbbo, "$(P)$(R)TriggerMode")
+{
+	field(PINI, 1)
+	
+	field(ZRST, "Fixed Time")
+	field(ZRVL, "0")
+	
+	field(ONST, "Continuous with Trigger")
+	field(ONVL, "1")
+	
+	field(TWST, "Start with Trigger")
+	field(TWVL, "2")
+	
+	field(THST, "Gated Trigger")
+	field(THVL, "3")
+	
+	field(FRST, "Trigger Sync")
+	field(FRVL, "4")
+	
+	field(FVST, "Fixed, Start with Trigger")
+	field(FVVL, "5")
+	
+	field(SXST, "Burst Mode")
+	field(SXVL, "6")
+}
+
+record(mbbi, "$(P)$(R)TriggerMode_RBV")
+{
+	field(ZRST, "Fixed Time")
+	field(ZRVL, "0")
+	
+	field(ONST, "Continuous with Trigger")
+	field(ONVL, "1")
+	
+	field(TWST, "Start with Trigger")
+	field(TWVL, "2")
+	
+	field(THST, "Gated Trigger")
+	field(THVL, "3")
+	
+	field(FRST, "Trigger Sync")
+	field(FRVL, "4")
+	
+	field(FVST, "Fixed, Start with Trigger")
+	field(FVVL, "5")
+	
+	field(SXST, "Burst Mode")
+	field(SXVL, "6")
+	
+	field(SCAN, "I/O Intr")
+}
+
+record(bo, "$(P)$(R)TriggerEdge")
+{
+	field(PINI, 1)
+	field(DTYP, "asynInt32")
+	field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_TRIGGER_EDGE")
+	field(ZNAM, "Rising")
+	field(ONAM, "Falling")
+	field(VAL,  "0")
+}
+
+record(bi, "$(P)$(R)TriggerEdge_RBV")
+{
+	field(DTYP, "asynInt32")
+	field(INP,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_TRIGGER_EDGE")
+	field(ZNAM, "Rising")
+	field(ONAM, "Falling")
+	field(SCAN, "I/O Intr")
+}
+
+record(mbbo, "$(P)$(R)OutputResolution")
+{
+	field(PINI, 1)
+	field(DTYP, "asynInt32")
+	field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_OUTPUT_RESOLUTION")
+	
+	field(ZRST, "32 Bit")
+	field(ZRVL, "0")
+	
+	field(ONST, "16 Bit")
+	field(ONVL, "1")
+	
+	field(TWST, "8 Bit")
+	field(TWVL, "2")
+	
+	field(THST, "4 Bit")
+	field(THVL, "3")
+	
+	field(FRST, "3 Bit")
+	field(FRVL, "4")
+	
+	field(FVST, "2 Bit")
+	field(FVVL, "5")
+	
+	field(SXST, "1 Bit")
+	field(SXVL, "6")
+}
+
+record(mbbi, "$(P)$(R)OutputResolution_RBV")
+{
+	field(SCAN, "I/O Intr")
+	field(DTYP, "asynInt32")
+	field(INP,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_OUTPUT_RESOLUTION")
+
+	field(ZRST, "32 Bit")
+	field(ZRVL, "0")
+	
+	field(ONST, "16 Bit")
+	field(ONVL, "1")
+	
+	field(TWST, "8 Bit")
+	field(TWVL, "2")
+	
+	field(THST, "4 Bit")
+	field(THVL, "3")
+	
+	field(FRST, "3 Bit")
+	field(FRVL, "4")
+	
+	field(FVST, "2 Bit")
+	field(FVVL, "5")
+	
+	field(SXST, "1 Bit")
+	field(SXVL, "6")
+}
+
+
+record(bo, "$(P)$(R)SparseEnable")
+{
+	field(PINI, 1)
+	field(DTYP, "asynInt32")
+	field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_SPARSE_OUTPUT")
+	field(ZNAM, "Disabled")
+	field(ONAM, "Enabled")
+	field(VAL,  "0")
+}
+
 record(bo, "$(P)$(R)Corrections")
 {
 	field(PINI, 1)
@@ -8,56 +187,6 @@ record(bo, "$(P)$(R)Corrections")
 	field(ZNAM, "Disabled")
 	field(ONAM, "Enabled")
 	field(VAL,  "0")
-}
-
-record(stringout, "$(P)$(R)Username")
-{
-	field(DTYP, "asynOctetWrite")
-	field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_USERNAME")
-	field(PINI, "YES")
-}
-
-record(stringin, "$(P)$(R)Username_RBV")
-{
-	field(DTYP, "asynOctetRead")
-	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_USERNAME")
-	field(PINI, "YES")
-	field(SCAN, "I/O Intr")
-}
-
-record(stringout, "$(P)$(R)Password")
-{
-	field(DTYP, "asynOctetWrite")
-	field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_PASSWORD")
-	field(PINI, "YES")
-}
-
-record(stringin, "$(P)$(R)Password_RBV")
-{
-	field(DTYP, "asynOctetRead")
-	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_PASSWORD")
-	field(PINI, "YES")
-	field(SCAN, "I/O Intr")
-}
-
-record(waveform, "$(P)$(R)SharePath")
-{
-    field(PINI, "YES")
-    field(DTYP, "asynOctetWrite")
-    field(INP,  "@asyn($(PORT),$(ADDR=0),$(TIMEOUT=1))RIGAKU_SHARE_PATH")
-    field(FTVL, "CHAR")
-    field(NELM, "256")
-    field(PINI, "YES")
-}
-
-record(waveform, "$(P)$(R)SharePath_RBV")
-{
-    field(DTYP, "asynOctetRead")
-    field(INP,  "@asyn($(PORT),$(ADDR=0),$(TIMEOUT=1))RIGAKU_SHARE_PATH")
-    field(FTVL, "CHAR")
-    field(NELM, "256")
-    field(SCAN, "I/O Intr")
-	field(PINI, "YES")
 }
 
 record(waveform, "$(P)$(R)FilePath")
@@ -138,6 +267,25 @@ record(bi, "$(P)$(R)Redistribution_RBV")
 	field(SCAN, "I/O Intr")
 }
 
+record(bo, "$(P)$(R)Differentiation")
+{
+	field(PINI, 1)
+	field(DTYP, "asynInt32")
+	field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_DIFFERENTIATION")
+	field(ZNAM, "Disabled")
+	field(ONAM, "Enabled")
+	field(VAL,  "0")
+}
+
+record(bi, "$(P)$(R)Differentiation_RBV")
+{
+	field(DTYP, "asynInt32")
+	field(INP,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_DIFFERENTIATION")
+	field(ZNAM, "Disabled")
+	field(ONAM, "Enabled")
+	field(SCAN, "I/O Intr")
+}
+
 record(bo, "$(P)$(R)OuterEdge")
 {
 	field(PINI, 1)
@@ -152,25 +300,6 @@ record(bi, "$(P)$(R)OuterEdge_RBV")
 {
 	field(DTYP, "asynInt32")
 	field(INP,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_OUTER_EDGE")
-	field(ZNAM, "Disabled")
-	field(ONAM, "Enabled")
-	field(SCAN, "I/O Intr")
-}
-
-record(bo, "$(P)$(R)Pileup")
-{
-	field(PINI, 1)
-	field(DTYP, "asynInt32")
-	field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_PILEUP")
-	field(ZNAM, "Disabled")
-	field(ONAM, "Enabled")
-	field(VAL,  "0")
-}
-
-record(bi, "$(P)$(R)Pileup_RBV")
-{
-	field(DTYP, "asynInt32")
-	field(INP,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_PILEUP")
 	field(ZNAM, "Disabled")
 	field(ONAM, "Enabled")
 	field(SCAN, "I/O Intr")
@@ -255,207 +384,40 @@ record(mbbi, "$(P)$(R)InterChip_RBV")
 	field(SCAN, "I/O Intr")
 }
 
-record(mbbo, "$(P)$(R)ImageMode")
-{	
-	field(ZRST, "32 Bit Single")
-	field(ZRVL, "1")
-	
-	field(ONST, "16 Bit x 2")
-	field(ONVL, "2")
-	
-	field(TWST, "16 Bit, Zero-Deadtime")
-	field(TWVL, "4")
-	
-	field(THST, "8 Bit, Zero-Deadtime")
-	field(THVL, "5")
-	
-	field(FRST, "4 Bit, Zero-Deadtime")
-	field(FRVL, "6")
-	
-	field(FVST, "2 Bit, Zero-Deadtime")
-	field(FVVL, "7")
-	
-	field(SXST, "8 Bit, 2S")
-	field(SXVL, "8")
-	
-	field(SVST, "4 Bit, 2S")
-	field(SVVL, "9")
-	
-	field(EIST, "2 Bit, 2S")
-	field(EIVL, "10")
-	
-	field(NIST, "16 Bit, 1S")
-	field(NIVL, "11")
-	
-	field(TEST, "8 Bit, 1S")
-	field(TEVL, "12")
-	
-	field(ELST, "4 Bit, 1S")
-	field(ELVL, "13")
-	
-	field(TVST, "2 Bit, 1S")
-	field(TVVL, "14")
-	
-	field(TTST, "2 Bit, Burst Mode")
-	field(TTVL, "15")
-	
-	field(FTST, "1 Bit, Burst Mode")
-	field(FTVL, "16")
-	
-	field(VAL, "0")
+record(mbbo, "$(P)$(R)NoiseElimination")
+{
+	field(PINI, 1)
+	field(DTYP, "asynInt32")
+	field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_NOISE_ELIMINATION")
+	field(ZRST, "Low")
+	field(ZRVL, "0")
+	field(ONST, "Middle")
+	field(ONVL, "1")
+	field(TWST, "High")
+	field(TWVL, "2")
 }
 
-record(mbbi, "$(P)$(R)ImageMode_RBV")
-{	
-	field(ZRST, "32 Bit Single")
-	field(ZRVL, "1")
-	
-	field(ONST, "16 Bit x 2")
-	field(ONVL, "2")
-	
-	field(TWST, "16 Bit, Zero-Deadtime")
-	field(TWVL, "4")
-	
-	field(THST, "8 Bit, Zero-Deadtime")
-	field(THVL, "5")
-	
-	field(FRST, "4 Bit, Zero-Deadtime")
-	field(FRVL, "6")
-	
-	field(FVST, "2 Bit, Zero-Deadtime")
-	field(FVVL, "7")
-	
-	field(SXST, "8 Bit, 2S")
-	field(SXVL, "8")
-	
-	field(SVST, "4 Bit, 2S")
-	field(SVVL, "9")
-	
-	field(EIST, "2 Bit, 2S")
-	field(EIVL, "10")
-	
-	field(NIST, "16 Bit, 1S")
-	field(NIVL, "11")
-	
-	field(TEST, "8 Bit, 1S")
-	field(TEVL, "12")
-	
-	field(ELST, "4 Bit, 1S")
-	field(ELVL, "13")
-	
-	field(TVST, "2 Bit, 1S")
-	field(TVVL, "14")
-	
-	field(TTST, "2 Bit, Burst Mode")
-	field(TTVL, "15")
-	
-	field(FTST, "1 Bit, Burst Mode")
-	field(FTVL, "16")
-	
+record(mbbi, "$(P)$(R)NoiseElimination_RBV")
+{
+	field(DTYP, "asynInt32")
+	field(INP,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_NOISE_ELIMINATION")
+	field(ZRST, "Low")
+	field(ZRVL, "0")
+	field(ONST, "Middle")
+	field(ONVL, "1")
+	field(TWST, "High")
+	field(TWVL, "2")
 	field(SCAN, "I/O Intr")
 }
 
-record(mbbo, "$(P)$(R)TriggerMode")
+record(bo, "$(P)$(R)DualThreshold")
 {
 	field(PINI, 1)
-	field(ZRST, "Fixed Time")
-	field(ZRVL, "0")
-	
-	field(ONST, "Continuous Exposure")
-	field(ONVL, "1")
-	
-	field(TWST, "Start with Trigger")
-	field(TWVL, "2")
-	
-	field(THST, "Gated Trigger")
-	field(THVL, "3")
-	
-	field(FRST, "ZDT Fixed Time")
-	field(FRVL, "4")
-	
-	field(FVST, "ZDT Continuous")
-	field(FVVL, "5")
-	
-	field(SXST, "ZDT Trigger Start")
-	field(SXVL, "6")
-	
-	field(SVST, "Fixed Time Trigger Start")
-	field(SVVL, "7")
-	
-	field(EIST, "ZDT Fixed Trigger Start")
-	field(EIVL, "8")
-	
-	field(NIST, "Burst Mode")
-	field(NIVL, "9")
-	
-	field(TEST, "Burst Mode Trigger Start")
-	field(TEVL, "10")
-	
-	field(ELST, "Burst Mode Gated Trigger")
-	field(ELVL, "11")
-	
-	field(TVST, "Trigger Sync")
-	field(TVVL, "12")
-	
-	field(TTST, "Pileup Trigger Start")
-	field(TTVL, "13")
-	
-	field(FTST, "Pileup Gated Trigger")
-	field(FTVL, "14")
-	
-	field(FFST, "Pileup Trigger Sync")
-	field(FFVL, "15")
-}
-
-record(mbbi, "$(P)$(R)TriggerMode_RBV")
-{
-	field(ZRST, "Fixed Time")
-	field(ZRVL, "0")
-	
-	field(ONST, "Continuous Exposure")
-	field(ONVL, "1")
-	
-	field(TWST, "Start with Trigger")
-	field(TWVL, "2")
-	
-	field(THST, "Gated Trigger")
-	field(THVL, "3")
-	
-	field(FRST, "ZDT Fixed Time")
-	field(FRVL, "4")
-	
-	field(FVST, "ZDT Continuous")
-	field(FVVL, "5")
-	
-	field(SXST, "ZDT Trigger Start")
-	field(SXVL, "6")
-	
-	field(SVST, "Fixed Time Trigger Start")
-	field(SVVL, "7")
-	
-	field(EIST, "ZDT Fixed Trigger Start")
-	field(EIVL, "8")
-	
-	field(NIST, "Burst Mode")
-	field(NIVL, "9")
-	
-	field(TEST, "Burst Mode Trigger Start")
-	field(TEVL, "10")
-	
-	field(ELST, "Burst Mode Gated Trigger")
-	field(ELVL, "11")
-	
-	field(TVST, "Trigger Sync")
-	field(TVVL, "12")
-	
-	field(TTST, "Pileup Trigger Start")
-	field(TTVL, "13")
-	
-	field(FTST, "Pileup Gated Trigger")
-	field(FTVL, "14")
-	
-	field(FFST, "Pileup Trigger Sync")
-	field(FFVL, "15")
+	field(DTYP, "asynInt32")
+	field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_THRESHOLD_SET")
+	field(ZNAM, "Single Threshold")
+	field(ONAM, "Dual Threshold")
+	field(VAL,  "0")
 }
 
 record(ao, "$(P)$(R)UpperThreshold")
@@ -490,22 +452,6 @@ record(ai, "$(P)$(R)LowerThreshold_RBV")
 	field(PREC, 4)
 }
 
-record(ao, "$(P)$(R)ExposureDelay")
-{
-	field(DTYP, "asynFloat64")
-	field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_EXPOSURE_DELAY")
-	field(PREC, 3)
-}
-
-record(ai, "$(P)$(R)ExposureDelay_RBV")
-{
-	field(DTYP, "asynFloat64")
-	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_EXPOSURE_DELAY")
-	field(SCAN, "I/O Intr")
-	field(PINI, "YES")
-	field(PREC, 3)
-}
-
 record(ao, "$(P)$(R)AcquireTime")
 {
 	field(PREC, 6)
@@ -516,7 +462,7 @@ record(ai, "$(P)$(R)AcquireTime_RBV")
 	field(PREC, 6)
 }
 
-record(ao, "$(P)$(R)AcquisitionDelay")
+record(ao, "$(P)$(R)AcquireDelay")
 {
 	field(DTYP, "asynFloat64")
 	field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_ACQUISITION_DELAY")
@@ -524,7 +470,7 @@ record(ao, "$(P)$(R)AcquisitionDelay")
 	field(PREC, 3)
 }
 
-record(ai, "$(P)$(R)AcquisitionDelay_RBV")
+record(ai, "$(P)$(R)AcquireDelay_RBV")
 {
 	field(DTYP, "asynFloat64")
 	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_ACQUISITION_DELAY")
@@ -533,23 +479,6 @@ record(ai, "$(P)$(R)AcquisitionDelay_RBV")
 	field(PREC, 3)
 }
 
-
-record(ao, "$(P)$(R)ExposureInterval")
-{
-	field(DTYP, "asynFloat64")
-	field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_EXPOSURE_INTERVAL")
-	field(PINI, "YES")
-	field(PREC, 3)
-}
-
-record(ai, "$(P)$(R)ExposureInterval_RBV")
-{
-	field(DTYP, "asynFloat64")
-	field(INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_EXPOSURE_INTERVAL")
-	field(SCAN, "I/O Intr")
-	field(PINI, "YES")
-	field(PREC, 3)
-}
 
 record(stringout, "$(P)$(R)CalibrationLabel")
 {

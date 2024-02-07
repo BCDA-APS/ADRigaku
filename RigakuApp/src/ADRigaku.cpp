@@ -50,10 +50,20 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 {
 	UHSS::State state = api.getState();
 	
+	this->lock();
+	
 	switch (status)
 	{
 		case UHSS::StateChanged:
 		{	
+			if (state.acquisitionState == UHSS::Status::NORMAL_END ||
+				state.operationState == UHSS::Status::IDLE)
+			{
+				setIntegerParam(this->ADAcquire, 0);
+				setIntegerParam(this->ADStatus, ADStatusIdle);
+				callParamCallbacks();
+			}
+		
 			if (state.acquisitionState == UHSS::Status::TERMINATED ||
 			    state.acquisitionState == UHSS::Status::NORMAL_END)
 			{
@@ -62,14 +72,6 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 				this->getIntegerParam(this->RigakuCorrections, &corrections);
 	
 				if (corrections == 0)    { api.deleteDataset(0); }
-			}
-		
-			if (state.operationState == UHSS::Status::IDLE)
-			{			
-				this->setIntegerParam(this->ADStatus, ADStatusIdle);
-				this->setIntegerParam(this->ADAcquireBusy, 0);
-				this->setIntegerParam(this->ADAcquire, 0);
-				callParamCallbacks();
 			}
 			
 			break;
@@ -86,15 +88,15 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 			this->setStringParam(RigakuCalibrationLabel, config.calibTable.label);
 			this->setDoubleParam(RigakuUpperThreshold, config.upperEnergy);
 			this->setDoubleParam(RigakuLowerThreshold, config.lowerEnergy);
-			this->setIntegerParam(ADMaxSizeX, config.numColumns);
-			this->setIntegerParam(ADMaxSizeY, config.numRows);
+			setIntegerParam(ADMaxSizeX, config.numColumns);
+			setIntegerParam(ADMaxSizeY, config.numRows);
 			
 			this->callParamCallbacks();
 			
 			break;
 		}
 		case UHSS::FrameAvailable:
-		{
+		{			
 			size_t image_dims[2];
 
 			image_dims[0] = state.outputDataset.numColumns;
@@ -109,6 +111,9 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 			char* buffer = (char*) malloc(state.outputDataset.frameSize);
 			api.getImages(buffer, 0, 1);
 			
+			int calculated_size = image_dims[0] * image_dims[1];
+			int HEADER_OFFSET = 1024;
+			
 			switch (state.outputDataset.outputMode)
 			{
 				case UHSS::OutputMode::UNSIGNED_8BIT:
@@ -117,18 +122,34 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 					
 				case UHSS::OutputMode::UNSIGNED_16BIT:
 					this->pArrays[0] = this->pNDArrayPool->alloc(2, image_dims, NDUInt16, 0, NULL);
+					calculated_size *= 2;
 					break;
 					
 				case UHSS::OutputMode::SIGNED_32BIT:
 					this->pArrays[0] = this->pNDArrayPool->alloc(2, image_dims, NDInt32, 0, NULL);
+					calculated_size *= 4;
 					break;
 					
 				case UHSS::OutputMode::IEEE_FLOAT:
 					this->pArrays[0] = this->pNDArrayPool->alloc(2, image_dims, NDFloat64, 0, NULL);
+					calculated_size *=4;
+					break;
+					
+				default:
+					printf("Unknown output type\n");
 					break;
 			}
 			
-			memcpy(this->pArrays[0]->pData, buffer, state.outputDataset.frameSize);
+			//printf("Calculated Size: %d\n", calculated_size);
+			//printf("Should be: %d\n", (state.outputDataset.frameSize - HEADER_OFFSET));
+			
+			if (calculated_size != (state.outputDataset.frameSize - HEADER_OFFSET))
+			{
+				printf("Something is wrong with my calculations\n");
+				break;
+			}
+			
+			memcpy(this->pArrays[0]->pData, &buffer[HEADER_OFFSET], calculated_size);
 			
 			delete buffer;
 			
@@ -148,9 +169,17 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 			}
 			
 			api.clearError();
+
+			setIntegerParam(this->ADStatus, ADStatusError);
+			setIntegerParam(this->ADAcquire, 0);
+			callParamCallbacks();
 			break;
 		}
 	}
+	
+	this->callParamCallbacks();
+	
+	this->unlock();
 }
 
 void ADRigaku::processImage()
@@ -162,8 +191,8 @@ void ADRigaku::processImage()
 	this->getIntegerParam(this->ADNumImagesCounter, &total_images);
 	image_number += 1;
 	total_images += 1;
-	this->setIntegerParam(this->NDArrayCounter,     image_number);
-	this->setIntegerParam(this->ADNumImagesCounter, total_images);
+	setIntegerParam(this->NDArrayCounter,     image_number);
+	setIntegerParam(this->ADNumImagesCounter, total_images);
 
 	this->pArrays[0]->uniqueId = image_number;
 
@@ -183,35 +212,41 @@ ADRigaku::ADRigaku(const char *portName, const char* configuration, int maxBuffe
 	         asynEnumMask, asynEnumMask, ASYN_CANBLOCK, 1, priority, stackSize),
 	api(UHSS::getAPI())
 {
-	ADDriver::createParam(RigakuUpperThresholdString, asynParamFloat64, &RigakuUpperThreshold);
-	ADDriver::createParam(RigakuLowerThresholdString, asynParamFloat64, &RigakuLowerThreshold);
+	ADDriver::createParam(RigakuAcquisitionDelayString, asynParamFloat64, &RigakuAcquisitionDelay);
 	
+	ADDriver::createParam(RigakuTriggerEdgeString, asynParamInt32, &RigakuTriggerEdge);
+	ADDriver::createParam(RigakuOutputResolutionString, asynParamInt32, &RigakuOutputResolution);
+	ADDriver::createParam(RigakuNoiseEliminationString, asynParamInt32, &RigakuNoiseElimination);
+	
+	ADDriver::createParam(RigakuCorrectionsString, asynParamInt32, &RigakuCorrections);
 	ADDriver::createParam(RigakuBadPixelString, asynParamInt32, &RigakuBadPixel);
 	ADDriver::createParam(RigakuCountingRateString, asynParamInt32, &RigakuCountingRate);
 	ADDriver::createParam(RigakuInterChipString, asynParamInt32, &RigakuInterChip);
 	ADDriver::createParam(RigakuFlatFieldString, asynParamInt32, &RigakuFlatField);
 	ADDriver::createParam(RigakuRedistributionString, asynParamInt32, &RigakuRedistribution);
+	ADDriver::createParam(RigakuDifferentiationString, asynParamInt32, &RigakuDifferentiation);
 	ADDriver::createParam(RigakuOuterEdgeString, asynParamInt32, &RigakuOuterEdge);
 	ADDriver::createParam(RigakuPileupString, asynParamInt32, &RigakuPileup);
-	
-	ADDriver::createParam(RigakuAcquisitionDelayString, asynParamFloat64, &RigakuAcquisitionDelay);
-	ADDriver::createParam(RigakuExposureDelayString, asynParamFloat64, &RigakuExposureDelay);
-	ADDriver::createParam(RigakuExposureIntervalString, asynParamFloat64, &RigakuExposureInterval);
+
+	ADDriver::createParam(RigakuThresholdSetString, asynParamInt32, &RigakuThresholdSet);
+	ADDriver::createParam(RigakuUpperThresholdString, asynParamFloat64, &RigakuUpperThreshold);
+	ADDriver::createParam(RigakuLowerThresholdString, asynParamFloat64, &RigakuLowerThreshold);
 	
 	ADDriver::createParam(RigakuCalibrationLabelString, asynParamOctet, &RigakuCalibrationLabel);
 	
-	ADDriver::createParam(RigakuCorrectionsString, asynParamInt32, &RigakuCorrections);
-	ADDriver::createParam(RigakuUsernameString, asynParamOctet, &RigakuUsername);
-	ADDriver::createParam(RigakuPasswordString, asynParamOctet, &RigakuPassword);
-	ADDriver::createParam(RigakuFileshareString, asynParamOctet, &RigakuSharepath);
+	ADDriver::createParam(RigakuSparseEnableString, asynParamInt32, &RigakuSparseEnable);
 	ADDriver::createParam(RigakuFilepathString, asynParamOctet, &RigakuFilepath);
 	ADDriver::createParam(RigakuFilenameString, asynParamOctet, &RigakuFilename);
 	
 	
-	setDoubleParam(RigakuExposureDelay, 0.0);
 	setStringParam(RigakuCalibrationLabel, "");
+	setStringParam(RigakuFilepath, "/");
+	setStringParam(RigakuFilename, "test");
 	
 	this->connect(pasynUserSelf);
+	
+	setIntegerParam(ADStatus, ADStatusInitializing);
+	this->callParamCallbacks();
 	
 	api.setCallback(*this);
 
@@ -243,13 +278,15 @@ asynStatus ADRigaku::writeInt32(asynUser *pasynUser, epicsInt32 value)
 	//Record for later use
 	this->getIntegerParam(ADStatus, &adStatus);
 	
+	setIntegerParam(function, value);
+	
 	if (function == ADAcquire)
 	{ 
-		if (adStatus == ADStatusIdle && value == 1)
+		if ((adStatus == ADStatusIdle || adStatus == ADStatusError) && value == 1)
 		{
 			this->setStringParam(ADStatusMessage, "Starting Acquisition...");
 			callParamCallbacks();
-			this->startAcquisition();
+			status = this->startAcquisition();
 		}
 		else if (adStatus == ADStatusAcquire && value == 0)
 		{
@@ -258,49 +295,20 @@ asynStatus ADRigaku::writeInt32(asynUser *pasynUser, epicsInt32 value)
 			this->stopAcquisition();
 		}
 	}
-	else if (function == RigakuBadPixel || function == RigakuCountingRate || function == RigakuInterChip ||
-	         function == RigakuFlatField || function == RigakuRedistribution || function == RigakuOuterEdge ||
-	         function == RigakuPileup)
-	{
-		int values[9] = { 0 };
-		int test[1] = { 0 };
-		
-		this->getIntegerParam(RigakuBadPixel, &values[0]);
-		this->getIntegerParam(RigakuCountingRate, &values[1]);
-		this->getIntegerParam(RigakuInterChip, &values[2]);
-		this->getIntegerParam(RigakuFlatField, &values[3]);
-		this->getIntegerParam(RigakuRedistribution, &values[4]);
-		this->getIntegerParam(RigakuOuterEdge, &values[5]);
-		this->getIntegerParam(RigakuPileup, &values[6]);
-
-		// Only set when detector is idle
-		
-		int curr_status;
-
-		this->getIntegerParam(this->ADStatus, &curr_status);
-		
-		while (curr_status != ADStatusIdle)
-		{
-			epicsThreadSleep(1);
-			this->getIntegerParam(this->ADStatus, &curr_status);
-		}
-		
-		api.controlCorrections(test, 7, values);
-	}
 	else if (function == RigakuCorrections)
 	{
 		if (value == 1)
 		{
-			std::string user, pass, path;
+			//std::string user, pass, path;
 			
-			this->getStringParam(RigakuUsername, user);
-			this->getStringParam(RigakuPassword, pass);
-			this->getStringParam(RigakuSharepath, path);
+			//this->getStringParam(RigakuUsername, user);
+			//this->getStringParam(RigakuPassword, pass);
+			//this->getStringParam(RigakuSharepath, path);
 		
 			api.controlCorrection("Diversion", 1); // Switch sparse matrix mode ON
-			api.controlCorrection("Diversion", "user", user.c_str()); // Set username required to mount the network drive
-			api.controlCorrection("Diversion", "password", pass.c_str()); // Set password required to mount the network drive
-			api.controlCorrection("Diversion", "share", path.c_str()); // Set path to the network drive.
+			//api.controlCorrection("Diversion", "user", user.c_str()); // Set username required to mount the network drive
+			//api.controlCorrection("Diversion", "password", pass.c_str()); // Set password required to mount the network drive
+			//api.controlCorrection("Diversion", "share", path.c_str()); // Set path to the network drive.
 		}
 		else
 		{
@@ -312,7 +320,7 @@ asynStatus ADRigaku::writeInt32(asynUser *pasynUser, epicsInt32 value)
 		status = ADDriver::writeInt32(pasynUser, value);
 	}
 	
-	this->setIntegerParam(function, value);
+	
 	callParamCallbacks();
 	return (asynStatus) status;
 }
@@ -388,75 +396,306 @@ asynStatus ADRigaku::writeOctet(asynUser* pasynUser, const char* value, size_t n
 	return (asynStatus) status;
 }
 
-void ADRigaku::startAcquisition()
+asynStatus ADRigaku::startAcquisition()
 {
 	UHSS::Parameters params;
 	
 	this->getIntegerParam(ADNumImages, &params.numFrames);
+	this->getIntegerParam(RigakuTriggerEdge, &params.acqTriggerMode);
+	this->getIntegerParam(RigakuNoiseElimination, &params.noiseElimination);
+
 	
-	int trigger, mode;
+	int trigger, mode, resolution, threshold;
 	
-	this->getIntegerParam(ADTriggerMode, &trigger);
 	this->getIntegerParam(ADImageMode, &mode);
+	this->getIntegerParam(ADTriggerMode, &trigger);
+	this->getIntegerParam(RigakuOutputResolution, &resolution);
+	this->getIntegerParam(RigakuThresholdSet, &threshold);
 	
-	params.acquisitionMode = trigger;
-	params.imagingMode = mode;
+	// Get rid of low hanging fruit for errors, cleans up later code
 	
-	int datatype;
-	
-	this->getIntegerParam(NDDataType, &datatype);
-	
-	switch (datatype)
+	if (threshold == DUAL_THRESHOLD && (mode == BURST_MODE || mode == ZDT_MODE))
 	{
-		case NDUInt8:
-			params.outputMode = UHSS::OutputMode::UNSIGNED_8BIT;
-			break;
-		
-		case NDInt8:
-			this->setIntegerParam(NDDataType, NDUInt16);
-			this->callParamCallbacks();
-			// Fall-Through
-		case NDUInt16:
-			params.outputMode = UHSS::OutputMode::UNSIGNED_16BIT;
-			break;
-		
-		case NDInt16:
-			this->setIntegerParam(NDDataType, NDInt32);
-			this->callParamCallbacks();
-			// Fall-Through
-		case NDInt32:
-			params.outputMode = UHSS::OutputMode::SIGNED_32BIT;
-			break;
-			
-		case NDFloat32:
-			this->setIntegerParam(NDDataType, NDFloat64);
-			this->callParamCallbacks();
-			// Fall-Through
-		case NDFloat64:
-			params.outputMode = UHSS::OutputMode::IEEE_FLOAT;
-			break;
+		this->setStringParam(ADStatusMessage, "Image Mode / Threshold Mismatch");
+		setIntegerParam(this->ADAcquire, 0);
+		setIntegerParam(this->ADStatus, ADStatusError);
+		return asynError;
 	}
+	
+	if ((resolution == OUT_3_BIT || resolution == OUT_1_BIT) && mode != BURST_MODE)
+	{
+		this->setStringParam(ADStatusMessage, "Resolution / Image Mode Mismatch");
+		setIntegerParam(this->ADAcquire, 0);
+		setIntegerParam(this->ADStatus, ADStatusError);
+		return asynError;
+	}
+	
+	if (mode == STANDARD_MODE)
+	{
+		switch (trigger)
+		{
+			case _FIXED_TRIGGER:
+				params.acquisitionMode = UHSS::AcquisitionMode::FIXED_TIME;
+				break;
+				
+			case _CONTINUOUS_TRIGGER:
+				params.acquisitionMode = UHSS::AcquisitionMode::CONT_WITH_TRIGGER;
+				break;
+				
+			case _START_TRIGGER:
+				params.acquisitionMode = UHSS::AcquisitionMode::START_WITH_TRIGGER;
+				break;
+				
+			case _GATED_TRIGGER:
+				params.acquisitionMode = UHSS::AcquisitionMode::GATED_TRIGGER;
+				break;
+				
+			case _TRIGGER_SYNC:
+				params.acquisitionMode = UHSS::AcquisitionMode::TRIGGER_SYNC;
+				break;
+				
+			case _FIXED_START_WITH_TRIGGER:
+				params.acquisitionMode = UHSS::AcquisitionMode::START_WITH_TRIGGER_FIXED_TIME;
+				break;
+			
+			default:
+				this->setStringParam(ADStatusMessage, "Trigger / Image Mode Mismatch");
+				setIntegerParam(this->ADAcquire, 0);
+				setIntegerParam(this->ADStatus, ADStatusError);
+				return asynError;
+		}
+	}
+	else if (mode == ZDT_MODE)
+	{
+		switch (trigger)
+		{
+			case _FIXED_TRIGGER:
+				params.acquisitionMode = UHSS::AcquisitionMode::FIXED_TIME_ZERO_DEAD;
+				break;
+				
+			case _CONTINUOUS_TRIGGER:
+				params.acquisitionMode = UHSS::AcquisitionMode::CONT_WITH_TRIGGER_ZERO_DEAD;
+				break;
+				
+			case _START_TRIGGER:
+				params.acquisitionMode = UHSS::AcquisitionMode::START_WITH_TRIGGER_ZERO_DEAD;
+				break;
+				
+			case _FIXED_START_WITH_TRIGGER:
+				params.acquisitionMode = UHSS::AcquisitionMode::START_WITH_TRIGGER_FIXED_TIME_ZERO_DEAD;
+				break;
+			
+			default:
+				this->setStringParam(ADStatusMessage, "Trigger / Image Mode Mismatch");
+				setIntegerParam(this->ADAcquire, 0);
+				setIntegerParam(this->ADStatus, ADStatusError);
+				return asynError;
+		}
+	}
+	else if (mode == BURST_MODE)
+	{
+		if (resolution < OUT_3_BIT)
+		{
+			this->setStringParam(ADStatusMessage, "Resolution / Image Mode Mismatch");
+			setIntegerParam(this->ADAcquire, 0);
+			setIntegerParam(this->ADStatus, ADStatusError);
+			return asynError;
+		}
+	
+		switch (trigger)
+		{
+			case _BURST_MODE_TRIGGER:
+				params.acquisitionMode = UHSS::AcquisitionMode::BURST;
+				break;
+				
+			case _START_TRIGGER:
+				params.acquisitionMode = UHSS::AcquisitionMode::START_WITH_TRIGGER_BURST;
+				break;
+				
+			case _GATED_TRIGGER:
+				params.acquisitionMode = UHSS::AcquisitionMode::GATED_TRIGGER_BURST;
+				break;
+
+			
+			default:
+				this->setStringParam(ADStatusMessage, "Trigger / Image Mode Mismatch");
+				setIntegerParam(this->ADAcquire, 0);
+				setIntegerParam(this->ADStatus, ADStatusError);
+				return asynError;
+		}
+	}
+	else if (mode == PILEUP_MODE)
+	{
+		switch (trigger)
+		{				
+			case _START_TRIGGER:
+				params.acquisitionMode = UHSS::AcquisitionMode::START_WITH_TRIGGER_PILEUP;
+				break;
+				
+			case _GATED_TRIGGER:
+				params.acquisitionMode = UHSS::AcquisitionMode::GATED_TRIGGER_PILEUP;
+				break;
+				
+			case _TRIGGER_SYNC:
+				params.acquisitionMode = UHSS::AcquisitionMode::TRIGGER_SYNC_PILEUP;
+				break;
+			
+			default:
+				this->setStringParam(ADStatusMessage, "Trigger / Image Mode Mismatch");
+				setIntegerParam(this->ADAcquire, 0);
+				setIntegerParam(this->ADStatus, ADStatusError);
+				return asynError;
+		}
+	}
+	else if (mode == PILEUP_PPP_MODE)
+	{
+		switch (trigger)
+		{				
+			case _START_TRIGGER:
+				params.acquisitionMode = 16;
+				break;
+			
+			default:
+				this->setStringParam(ADStatusMessage, "Trigger / Image Mode Mismatch");
+				setIntegerParam(this->ADAcquire, 0);
+				setIntegerParam(this->ADStatus, ADStatusError);
+				return asynError;
+		}
+	}
+	
+	if (resolution == OUT_32_BIT)
+	{
+		if (threshold == DUAL_THRESHOLD)
+		{
+			this->setStringParam(ADStatusMessage, "Resolution / Threshold Mismatch");
+			setIntegerParam(this->ADAcquire, 0);
+			setIntegerParam(this->ADStatus, ADStatusError);
+			return asynError;
+		}
+	
+		switch (mode)
+		{
+			case STANDARD_MODE:
+			case PILEUP_MODE:
+			case PILEUP_PPP_MODE:
+				params.imagingMode = UHSS::ImagingMode::B32_SINGLE;
+				params.outputMode  = UHSS::OutputMode::SIGNED_32BIT;
+				setIntegerParam(NDDataType, NDInt32);
+				break;
+				
+			default:
+				this->setStringParam(ADStatusMessage, "Resolution / Image Mode Mismatch");
+				setIntegerParam(this->ADStatus, ADStatusError);
+				setIntegerParam(this->ADAcquire, 0);
+				return asynError;
+		}
+	}
+	else if (resolution == OUT_16_BIT)
+	{		
+		if      (mode == ZDT_MODE)              { params.imagingMode = UHSS::ImagingMode::B16_ZERO_DEADTIME; }
+		else if (threshold == SINGLE_THRESHOLD) { params.imagingMode = UHSS::ImagingMode::B16_1S; }
+		else                                    { params.imagingMode = UHSS::ImagingMode::B16_2S; }
 		
-	params.acqTriggerMode = UHSS::TriggerMode::RISING_EDGE;
+		params.outputMode = UHSS::OutputMode::UNSIGNED_16BIT;
+		
+		setIntegerParam(NDDataType, NDUInt16);
+	}
+	else if (resolution == OUT_8_BIT)
+	{
+		if      (mode == ZDT_MODE)              { params.imagingMode = UHSS::ImagingMode::B8_ZERO_DEADTIME; }
+		else if (threshold == SINGLE_THRESHOLD) { params.imagingMode = UHSS::ImagingMode::B8_1S; }
+		else                                    { params.imagingMode = UHSS::ImagingMode::B8_2S; }
+		
+		params.outputMode = UHSS::OutputMode::UNSIGNED_8BIT;
+		
+		setIntegerParam(NDDataType, NDUInt8);
+	}
+	else if (resolution == OUT_4_BIT)
+	{
+		if      (mode == ZDT_MODE)              { params.imagingMode = UHSS::ImagingMode::B4_ZERO_DEADTIME; }
+		else if (threshold == SINGLE_THRESHOLD) { params.imagingMode = UHSS::ImagingMode::B4_1S; }
+		else                                    { params.imagingMode = UHSS::ImagingMode::B4_2S; }
+		
+		params.outputMode = UHSS::OutputMode::UNSIGNED_8BIT;
+		
+		setIntegerParam(NDDataType, NDUInt8);
+	}
+	else if (resolution == OUT_3_BIT)
+	{		
+		params.outputMode = UHSS::OutputMode::UNSIGNED_8BIT;
+		params.imagingMode = UHSS::ImagingMode::B3_BURST;
+		setIntegerParam(NDDataType, NDUInt8);
+	}
+	else if (resolution == OUT_2_BIT)
+	{
+		switch (mode)
+		{
+			case STANDARD_MODE:
+			case PILEUP_MODE:
+			case PILEUP_PPP_MODE:
+				if (threshold == SINGLE_THRESHOLD)    { params.imagingMode = UHSS::ImagingMode::B2_1S; }
+				else                                  { params.imagingMode = UHSS::ImagingMode::B2_2S; }
+				break;
+				
+			case ZDT_MODE:
+				params.imagingMode = UHSS::ImagingMode::B2_ZERO_DEADTIME;
+				break;
+				
+			case BURST_MODE:
+				params.imagingMode = UHSS::ImagingMode::B2_BURST;
+				break;
+		}
+		
+		params.outputMode = UHSS::OutputMode::UNSIGNED_8BIT;
+		setIntegerParam(NDDataType, NDUInt8);
+	}
+	else if (resolution == OUT_1_BIT)
+	{
+		params.outputMode = UHSS::OutputMode::UNSIGNED_8BIT;
+		params.imagingMode = UHSS::ImagingMode::B1_BURST;
+		setIntegerParam(NDDataType, NDUInt8);
+	}
+	
 	params.expTriggerMode = UHSS::TriggerMode::RISING_EDGE;
+	params.exposureDelay = 0.0;
 	params.readoutBits = 0;
-	params.noiseElimination = UHSS::NoiseElimination::LOW;
 	
 	double exposure, interval, exp_delay, acq_delay;
 	
 	this->getDoubleParam(ADAcquireTime, &exposure);
-	this->getDoubleParam(RigakuExposureInterval, &interval);
-	this->getDoubleParam(RigakuExposureDelay, &exp_delay);
+	this->getDoubleParam(ADAcquirePeriod, &interval);
 	this->getDoubleParam(RigakuAcquisitionDelay, &acq_delay);
 	
 	//Exposure time is set in seconds but sent in milliseconds
 	params.exposureTime = exposure * 1000;
-	params.exposureInterval = interval;
-	params.exposureDelay = exp_delay;
+	params.exposureInterval = interval * 1000;
 	params.acquisitionDelay = acq_delay;
+	
+	this->unlock();
 	
 	api.setParameters(params);
 	
+	int corrections_enabled;
+
+	this->getIntegerParam(RigakuCorrections, &corrections_enabled);
+	
+	if (corrections_enabled)
+	{
+		int values[9] = { 0 };
+		int test[1] = { 0 };
+		
+		this->getIntegerParam(RigakuBadPixel, &values[0]);
+		this->getIntegerParam(RigakuCountingRate, &values[1]);
+		this->getIntegerParam(RigakuInterChip, &values[2]);
+		this->getIntegerParam(RigakuFlatField, &values[3]);
+		this->getIntegerParam(RigakuRedistribution, &values[4]);
+		this->getIntegerParam(RigakuDifferentiation, &values[5]);
+		this->getIntegerParam(RigakuOuterEdge, &values[6]);
+		this->getIntegerParam(RigakuPileup, &values[7]);
+
+		api.controlCorrections(test, 8, values);
+	}
+
 	std::string filename;
 	std::string filepath;
 	
@@ -465,24 +704,29 @@ void ADRigaku::startAcquisition()
 	
 	std::string fullpath = filepath;
 	
-	if (filepath.at(filepath.length() - 1) != '/')    { fullpath += "/"; }
+	if (filepath.size() > 0 && filepath.at(filepath.length() - 1) != '/')    { fullpath += "/"; }
 	
 	fullpath += filename;
 	
 	api.controlCorrection("Diversion", "filepath", fullpath.c_str());
+
 	
 	if(api.startAcq())
 	{
+		this->lock();
 		this->setStringParam(ADStatusMessage, "");
-		this->setIntegerParam(this->ADStatus, ADStatusAcquire);
+		setIntegerParam(ADAcquire, 1);
+		setIntegerParam(ADStatus, ADStatusAcquire);
+		return asynSuccess;
 	}
 	else
 	{
+		this->lock();
 		this->setStringParam(ADStatusMessage, "Error in starting acquire");
-		this->setIntegerParam(this->ADStatus, ADStatusError);
+		setIntegerParam(ADAcquire, 0);
+		setIntegerParam(ADStatus, ADStatusError);
+		return asynError;
 	}
-	
-	this->callParamCallbacks();
 }
 
 void ADRigaku::stopAcquisition()
@@ -490,9 +734,9 @@ void ADRigaku::stopAcquisition()
 	api.stop();
 
 	epicsThreadCreate("Check stop thread",
-	epicsThreadPriorityLow,
-	epicsThreadGetStackSize(epicsThreadStackMedium),
-	(EPICSTHREADFUNC)::spawn_thread_callback, (void*) this);
+	                  epicsThreadPriorityLow,
+	                  epicsThreadGetStackSize(epicsThreadStackMedium),
+	                  (EPICSTHREADFUNC)::spawn_thread_callback, (void*) this);
 }
 
 bool ADRigaku::checkAcquisitionStatus()

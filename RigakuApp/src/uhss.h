@@ -82,8 +82,9 @@ namespace UHSS {
 		const int	B8_1S			= 12;
 		const int	B4_1S			= 13;
 		const int	B2_1S			= 14;
-	        const int	B2_BURST        	= 15;
-	        const int	B1_BURST        	= 16;
+		const int	B2_BURST		= 15;
+		const int	B1_BURST		= 16;
+		const int	B3_BURST		= 17;
 
 	};
 
@@ -175,6 +176,25 @@ namespace UHSS {
 	};
 
 	/**
+	 * Enable OUT
+	 */
+	namespace	EnableOUT {
+
+		const int	EXPOSURE_MODE		= 0;
+		const int	ITERATION_MODE		= 1;
+		const int	START_TO_STOP_MODE	= 2;
+	}
+
+	/**
+	 * LED state
+	 */
+	namespace	LEDState {
+
+		const int	OFF			= 0;
+		const int	ON			= 1;
+	}
+
+	/**
 	 * Template of Array classes
 	 */
 	template<typename _T>	class	UHSS_API	Array {
@@ -204,6 +224,8 @@ namespace UHSS {
 		double		exposureTime;
 		double		lowerEnergy;
 		double		upperEnergy;
+		double		resolution;
+		double		shiftTo;
 		const char	*calibLabel;
 		const char	*date;
 	} DatasetInfo;
@@ -218,6 +240,20 @@ namespace UHSS {
 		Array<double>	energy;
 		Array<int>	attenuation;
 	} CalibTable;
+
+	typedef struct {
+		int		RCrefPLX;
+		int		bgmainSH;
+		int		bbs;
+		int		bcr;
+		int		bofs;
+		int		bgsh;
+		int		EN_CAP_SW;
+		int		bg;
+		int		bgcas;
+		int		bl;
+		int		bh;
+	} trimDAC;
 
 	/**
 	 * State information
@@ -263,7 +299,11 @@ namespace UHSS {
 		double			pixelSize;
 		double			detectorWidth;	// Dimensions in mm
 		double			detectorHeight;
+		Array<int>		moduleWidth;
+		Array<int>		moduleHeight;
 		int			detectorType;
+		int			ledState;
+		int			enableOut;
 		int			lowerThreshold;	// Discriminator
 		int			upperThreshold;
 		int			refThreshold;
@@ -380,9 +420,12 @@ namespace UHSS {
 		virtual bool		controlCorrection(const char *,
 							int) = 0;
 		virtual	bool		deleteDataset(int) = 0;
+		virtual bool		setEnableOUT(int) = 0;
+		virtual bool		setLEDState(int) = 0;
 		virtual	bool		setThreshold(int, int, int) = 0;
 		virtual	bool		setEnergy(const char *,
 						double, double, int) = 0;
+		virtual bool		setAlternateGain(float, float) = 0;
 		virtual	bool		setCalibTable(const char *,
 						double, double, int, int) = 0;
 		virtual	bool		reCorrect(int) = 0;
@@ -393,6 +436,16 @@ namespace UHSS {
 		virtual	const char	*getResponse() = 0;
 		virtual	const char	*translateError(int, int &) = 0;
 		virtual	void		log(const char *, int = 2) = 0;
+		virtual	void		thScan(unsigned int, int, int, const char *) = 0;
+		virtual	void		setTrimDAC(const char *) = 0;
+		virtual	void		riceScan(const trimDAC &, unsigned int, int, int, const char *) = 0;
+		virtual	void		riceCorrection(unsigned int, const char *, const char *) = 0;
+		virtual	void		peakScan(const trimDAC &, unsigned int, int, int, const char *, int, bool) = 0;
+		virtual	void		gainCorrection(unsigned int, const char *, const char *, int) = 0;
+		virtual	void		thScanFit(const char *, const char *, const char *) = 0;
+		virtual const Array<const float*>& getEnergyResolutionMap() = 0;
+		virtual const Array<const float*>& getThresholdEnergyMap() = 0;
+		virtual const char* getAppliedAlternateGainMap() = 0;
 		virtual	void		setCallback(ManagerCallback &) = 0;
 
 		virtual	const	ParameterRanges
