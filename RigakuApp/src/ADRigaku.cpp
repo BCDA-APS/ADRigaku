@@ -33,7 +33,7 @@ void RigakuTest()
 	api.initialize("XSPA");
 }
 
-void spawn_thread_callback(void* arg)
+static void spawn_thread_callback(void* arg)
 {
 	ADRigaku* driver = (ADRigaku*) arg;
 	
@@ -55,12 +55,29 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 	switch (status)
 	{
 		case UHSS::StateChanged:
-		{	
-			if (state.acquisitionState == UHSS::Status::NORMAL_END ||
-				state.operationState == UHSS::Status::IDLE)
+		{
+			/*
+			printf("State Changed\n");
+			printf("\tOperation State: %d\n", state.operationState);
+			printf("\tServer State: %d\n", state.serverState);
+			printf("\tConnection State: %d\n", state.connectionState);
+			printf("\tServer Operation State: %d\n", state.serverOperationState);
+			printf("\tAcquisition State: %d\n", state.acquisitionState);
+			*/
+			
+			int ioc_status;
+			
+			getIntegerParam(ADStatus, &ioc_status);
+			
+			
+			if ((state.acquisitionState == UHSS::Status::NORMAL_END && ioc_status == ADStatusAcquire) ||
+			    (state.acquisitionState == UHSS::Status::TERMINATED && ioc_status == ADStatusAcquire) ||
+				(state.operationState   == UHSS::Status::IDLE       && ioc_status == ADStatusInitializing))
+				
 			{
 				setIntegerParam(this->ADAcquire, 0);
 				setIntegerParam(this->ADStatus, ADStatusIdle);
+				setStringParam(ADStatusMessage, "");
 				callParamCallbacks();
 			}
 		
@@ -90,6 +107,10 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 			this->setDoubleParam(RigakuLowerThreshold, config.lowerEnergy);
 			setIntegerParam(ADMaxSizeX, config.numColumns);
 			setIntegerParam(ADMaxSizeY, config.numRows);
+			setIntegerParam(NDArraySizeX, config.numColumns);
+			setIntegerParam(NDArraySizeY, config.numRows);
+			
+			setStringParam(ADSDKVersion, api.getVersion());
 			
 			this->callParamCallbacks();
 			
@@ -102,17 +123,25 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 			image_dims[0] = state.outputDataset.numColumns;
 			image_dims[1] = state.outputDataset.numRows;
 			
+			//printf("Dataset Reporting Size: %d x %d\n", state.outputDataset.numColumns, state.outputDataset.numRows);
+			
 			if (state.outputDataset.imagingMode == UHSS::ImagingMode::B16_2S || 
 			    state.outputDataset.imagingMode == UHSS::ImagingMode::B8_2S)
 			{
 				image_dims[1] = image_dims[1] * 2;
 			}
 			
+			setIntegerParam(NDArraySizeX, image_dims[0]);
+			setIntegerParam(NDArraySizeY, image_dims[1]);
+			setIntegerParam(NDArraySize, state.outputDataset.frameSize);
+			
 			char* buffer = (char*) malloc(state.outputDataset.frameSize);
 			api.getImages(buffer, 0, 1);
 			
 			int calculated_size = image_dims[0] * image_dims[1];
 			int HEADER_OFFSET = 1024;
+			
+			if (this->pArrays[0])    { this->pArrays[0]->release(); }
 			
 			switch (state.outputDataset.outputMode)
 			{
@@ -171,7 +200,7 @@ void ADRigaku::notify(UHSS::AcqManager& manager, UHSS::StatusEvent status)
 			api.clearError();
 
 			setIntegerParam(this->ADStatus, ADStatusError);
-			setIntegerParam(this->ADAcquire, 0);
+			setIntegerParam(this->ADAcquire	, 0);
 			callParamCallbacks();
 			break;
 		}
@@ -202,8 +231,6 @@ void ADRigaku::processImage()
 	getAttributes(this->pArrays[0]->pAttributeList);
 
 	doCallbacksGenericPointer(this->pArrays[0], NDArrayData, 0);
-
-	this->pArrays[0]->release();
 	this->callParamCallbacks();
 }
 
@@ -238,6 +265,11 @@ ADRigaku::ADRigaku(const char *portName, const char* configuration, int maxBuffe
 	ADDriver::createParam(RigakuFilepathString, asynParamOctet, &RigakuFilepath);
 	ADDriver::createParam(RigakuFilenameString, asynParamOctet, &RigakuFilename);
 	
+	this->pArrays[0] = NULL;
+	
+	setStringParam(ADManufacturer, "Rigaku");
+	setStringParam(ADModel, "Si 3m");
+	setStringParam(ADSDKVersion, "");
 	
 	setStringParam(RigakuCalibrationLabel, "");
 	setStringParam(RigakuFilepath, "/");
@@ -246,11 +278,11 @@ ADRigaku::ADRigaku(const char *portName, const char* configuration, int maxBuffe
 	this->connect(pasynUserSelf);
 	
 	setIntegerParam(ADStatus, ADStatusInitializing);
-	this->callParamCallbacks();
-	
+	setStringParam(ADStatusMessage, "Initialization may take some time");
+
 	api.setCallback(*this);
 
-	if (! api.initialize(configuration))
+	if (! api.initialize("XSPA"))
 	{
 		this->setStringParam(ADStatusMessage, "Couldn't connect to server");
 		return;
@@ -385,7 +417,7 @@ asynStatus ADRigaku::writeOctet(asynUser* pasynUser, const char* value, size_t n
 	if (function == RigakuCalibrationLabel)
 	{
 		api.setEnergy(value, config.lowerEnergy, config.upperEnergy, 1);
-		*actual = sizeof(value);
+		*actual = strlen(value);
 	}
 	else
 	{
@@ -401,6 +433,7 @@ asynStatus ADRigaku::startAcquisition()
 	UHSS::Parameters params;
 	
 	this->getIntegerParam(ADNumImages, &params.numFrames);
+	this->getIntegerParam(ADNumExposures, &params.numPileup);
 	this->getIntegerParam(RigakuTriggerEdge, &params.acqTriggerMode);
 	this->getIntegerParam(RigakuNoiseElimination, &params.noiseElimination);
 
@@ -660,41 +693,34 @@ asynStatus ADRigaku::startAcquisition()
 	params.exposureDelay = 0.0;
 	params.readoutBits = 0;
 	
-	double exposure, interval, exp_delay, acq_delay;
+	double exposure, interval, acq_delay;
 	
 	this->getDoubleParam(ADAcquireTime, &exposure);
 	this->getDoubleParam(ADAcquirePeriod, &interval);
 	this->getDoubleParam(RigakuAcquisitionDelay, &acq_delay);
 	
-	//Exposure time is set in seconds but sent in milliseconds
+	//Exposure time is set in seconds but sent in milliseconds	
 	params.exposureTime = exposure * 1000;
 	params.exposureInterval = interval * 1000;
 	params.acquisitionDelay = acq_delay;
 	
 	this->unlock();
 	
-	api.setParameters(params);
+	if (! api.setParameters(params))    { printf("Failed to set parameters\n"); }
 	
-	int corrections_enabled;
-
-	this->getIntegerParam(RigakuCorrections, &corrections_enabled);
+	int values[10] = { 0 };
 	
-	if (corrections_enabled)
-	{
-		int values[9] = { 0 };
-		int test[1] = { 0 };
-		
-		this->getIntegerParam(RigakuBadPixel, &values[0]);
-		this->getIntegerParam(RigakuCountingRate, &values[1]);
-		this->getIntegerParam(RigakuInterChip, &values[2]);
-		this->getIntegerParam(RigakuFlatField, &values[3]);
-		this->getIntegerParam(RigakuRedistribution, &values[4]);
-		this->getIntegerParam(RigakuDifferentiation, &values[5]);
-		this->getIntegerParam(RigakuOuterEdge, &values[6]);
-		this->getIntegerParam(RigakuPileup, &values[7]);
+	this->getIntegerParam(RigakuBadPixel, &values[UHSS::ImageCorrection::BAD_PIXEL]);
+	this->getIntegerParam(RigakuCountingRate, &values[UHSS::ImageCorrection::COUNTING_RATE]);
+	this->getIntegerParam(RigakuInterChip, &values[UHSS::ImageCorrection::INTER_CHIP]);
+	this->getIntegerParam(RigakuFlatField, &values[UHSS::ImageCorrection::FLAT_FIELD]);
+	this->getIntegerParam(RigakuRedistribution, &values[UHSS::ImageCorrection::REDISTRIBUTION]);
+	this->getIntegerParam(RigakuDifferentiation, &values[UHSS::ImageCorrection::DIFFERENTIATION]);
+	this->getIntegerParam(RigakuOuterEdge, &values[UHSS::ImageCorrection::OUTER_EDGE]);
+	this->getIntegerParam(RigakuPileup, &values[UHSS::ImageCorrection::PILEUP]);
+	this->getIntegerParam(RigakuSparseEnable, &values[UHSS::ImageCorrection::DIVERSION]);
 
-		api.controlCorrections(test, 8, values);
-	}
+	api.controlCorrections(NULL, 8, values);
 
 	std::string filename;
 	std::string filepath;
@@ -708,6 +734,11 @@ asynStatus ADRigaku::startAcquisition()
 	
 	fullpath += filename;
 	
+	int fast_mode;
+	
+	this->getIntegerParam(RigakuSparseEnable, &fast_mode);
+	
+	api.controlCorrection("Diversion", fast_mode);
 	api.controlCorrection("Diversion", "filepath", fullpath.c_str());
 
 	
@@ -733,17 +764,15 @@ void ADRigaku::stopAcquisition()
 {
 	api.stop();
 
-	epicsThreadCreate("Check stop thread",
-	                  epicsThreadPriorityLow,
-	                  epicsThreadGetStackSize(epicsThreadStackMedium),
-	                  (EPICSTHREADFUNC)::spawn_thread_callback, (void*) this);
+	//epicsThreadCreate("Check stop thread",
+	//                  epicsThreadPriorityLow,
+	//                  epicsThreadGetStackSize(epicsThreadStackMedium),
+	//                  (EPICSTHREADFUNC)::spawn_thread_callback, (void*) this);
 }
 
 bool ADRigaku::checkAcquisitionStatus()
 {
 	UHSS::State state = api.getState();
-
-	printf("State: %d\n", state.operationState);
 
 	if (state.operationState == UHSS::Status::TERMINATED)
 	{

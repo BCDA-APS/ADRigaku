@@ -173,7 +173,7 @@ record(bo, "$(P)$(R)SparseEnable")
 {
 	field(PINI, 1)
 	field(DTYP, "asynInt32")
-	field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_SPARSE_OUTPUT")
+	field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_SPARSE_ENABLE")
 	field(ZNAM, "Disabled")
 	field(ONAM, "Enabled")
 	field(VAL,  "0")
@@ -300,6 +300,25 @@ record(bi, "$(P)$(R)OuterEdge_RBV")
 {
 	field(DTYP, "asynInt32")
 	field(INP,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_OUTER_EDGE")
+	field(ZNAM, "Disabled")
+	field(ONAM, "Enabled")
+	field(SCAN, "I/O Intr")
+}
+
+record(bo, "$(P)$(R)Pileup")
+{
+	field(PINI, 1)
+	field(DTYP, "asynInt32")
+	field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_PILEUP")
+	field(ZNAM, "Disabled")
+	field(ONAM, "Enabled")
+	field(VAL,  "0")
+}
+
+record(bi, "$(P)$(R)Pileup_RBV")
+{
+	field(DTYP, "asynInt32")
+	field(INP,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))RIGAKU_PILEUP")
 	field(ZNAM, "Disabled")
 	field(ONAM, "Enabled")
 	field(SCAN, "I/O Intr")

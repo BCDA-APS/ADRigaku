@@ -61,6 +61,7 @@ namespace UHSS {
 		const int	START_WITH_TRIGGER_PILEUP		= 13;
 		const int	GATED_TRIGGER_PILEUP			= 14;
 		const int	TRIGGER_SYNC_PILEUP			= 15;
+		const int	START_WITH_TRIGGER_PILEUP_PPP		= 16;
 
 	};
 
@@ -85,6 +86,8 @@ namespace UHSS {
 		const int	B2_BURST		= 15;
 		const int	B1_BURST		= 16;
 		const int	B3_BURST		= 17;
+		const int	B4_ZD_SPARSE_DATA	= 18;
+		const int	B2_ZD_SPARSE_DATA	= 19;
 
 	};
 
@@ -195,6 +198,24 @@ namespace UHSS {
 	}
 
 	/**
+	 * Offset Param
+	 */
+	namespace	OffsetParam {
+
+		const int	TRIM			= 0;
+		const int	BG			= 1;
+	}
+
+	/**
+	 * Correction File Type
+	 */
+	namespace	CorrectionFileType {
+
+		const int	COR_FILE		= 0;
+		const int	VL_FILE			= 1;
+	}
+
+	/**
 	 * Template of Array classes
 	 */
 	template<typename _T>	class	UHSS_API	Array {
@@ -226,6 +247,7 @@ namespace UHSS {
 		double		upperEnergy;
 		double		resolution;
 		double		shiftTo;
+		int		parseDataSize;
 		const char	*calibLabel;
 		const char	*date;
 	} DatasetInfo;
@@ -333,6 +355,8 @@ namespace UHSS {
 		int			zeroDeadTimeDataLength;
 		int			readoutBits;
 		int			noiseElimination;
+		int			parseDataSize;
+		int			bitskip;
 		unsigned int		exposureTime_clk;
 		unsigned int		exposureInterval_clk;
 		unsigned int		exposureDelay_clk;
@@ -363,6 +387,8 @@ namespace UHSS {
 		PRange<int>		zeroDeadTimeDataLength;
 		PRange<int>		readoutBits;
 		PRange<int>		noiseElimination;
+		PRange<int>		parseDataSize;
+		PRange<int>		bitskip;
 		PRange<unsigned int>	exposureTime_clk;
 		PRange<unsigned int>	exposureInterval_clk;
 		PRange<unsigned int>	exposureDelay_clk;
@@ -436,6 +462,12 @@ namespace UHSS {
 		virtual	const char	*getResponse() = 0;
 		virtual	const char	*translateError(int, int &) = 0;
 		virtual	void		log(const char *, int = 2) = 0;
+		virtual	bool		setFramePatternData(int,
+						const char *, int, int = -1) = 0;
+		virtual	bool		setFramePatternData(const char *,
+						int, int = -1) = 0;
+		virtual	bool		setFramePatternData(int, int = -1) = 0;
+		virtual	bool		clearFramePatternData(int = -1) = 0;
 		virtual	void		thScan(unsigned int, int, int, const char *) = 0;
 		virtual	void		setTrimDAC(const char *) = 0;
 		virtual	void		riceScan(const trimDAC &, unsigned int, int, int, const char *) = 0;
@@ -443,9 +475,10 @@ namespace UHSS {
 		virtual	void		peakScan(const trimDAC &, unsigned int, int, int, const char *, int, bool) = 0;
 		virtual	void		gainCorrection(unsigned int, const char *, const char *, int) = 0;
 		virtual	void		thScanFit(const char *, const char *, const char *) = 0;
-		virtual const Array<const float*>& getEnergyResolutionMap() = 0;
-		virtual const Array<const float*>& getThresholdEnergyMap() = 0;
-		virtual const char* getAppliedAlternateGainMap() = 0;
+		virtual	bool		ZDFlatCorrection(double, int, int, int, double, int, int, int) = 0;
+		virtual	const Array<const float*>&	getEnergyResolutionMap() = 0;
+		virtual	const Array<const float*>&	getThresholdEnergyMap() = 0;
+		virtual	const char*	getAppliedAlternateGainMap() = 0;
 		virtual	void		setCallback(ManagerCallback &) = 0;
 
 		virtual	const	ParameterRanges
